@@ -1,0 +1,10 @@
+node_modules/
+dist/
+packed/
+*.log
+.DS_Store
+*.crx
+*.xpi
+web-ext-artifacts/
+signed/
+serverVideoCapture/

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browser Tracker</title>
+  <style>
+    body {
+      width: 400px;
+      padding: 15px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      margin: 0;
+    }
+    
+    h2 {
+      margin-top: 0;
+      color: #333;
+      font-size: 18px;
+    }
+    
+    .current-tab {
+      background: #f0f7ff;
+      border-left: 3px solid #4285f4;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 4px;
+    }
+    
+    .current-tab h3 {
+      margin: 0 0 5px 0;
+      font-size: 14px;
+      color: #4285f4;
+    }
+    
+    .tab-info {
+      font-size: 12px;
+      color: #666;
+      margin: 5px 0;
+      word-break: break-all;
+    }
+    
+    .tab-title {
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 3px;
+    }
+    
+    .history {
+      margin-top: 15px;
+    }
+    
+    .history h3 {
+      font-size: 14px;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    
+    .history-item {
+      padding: 8px;
+      margin-bottom: 5px;
+      background: #f9f9f9;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+    
+    .history-time {
+      color: #888;
+      font-size: 10px;
+    }
+    
+    .clear-btn {
+      background: #d93025;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-top: 10px;
+      width: 100%;
+    }
+    
+    .clear-btn:hover {
+      background: #c5221f;
+    }
+    
+    .empty-state {
+      color: #999;
+      font-size: 12px;
+      text-align: center;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h2>🦊 Browser Tracker (Firefox)</h2>
+  
+  <div class="current-tab">
+    <h3>Текущая вкладка</h3>
+    <div id="current-tab-content" class="empty-state">
+      Загрузка...
+    </div>
+  </div>
+  
+  <div class="history">
+    <h3>История активности (последние 10)</h3>
+    <div id="history-content" class="empty-state">
+      История пуста
+    </div>
+  </div>
+  
+  <button id="clear-history" class="clear-btn">Очистить историю</button>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
