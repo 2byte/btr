@@ -4,6 +4,43 @@ globalThis.browserAPI = typeof browser !== "undefined" ? browser : chrome;
 
 console.log('[ContentBridge] Loaded');
 
+// CSP-safe plugin injection handler using Blob URL
+// Listen for plugin injection requests from ISOLATED world
+document.addEventListener('__BTR_INJECT_PLUGIN__', (event) => {
+  const { code, name } = event.detail;
+  
+  console.log(`[ContentBridge] Injecting plugin ${name} in MAIN world (CSP-safe via Blob)`);
+  
+  try {
+    // Create Blob URL to bypass CSP inline-script restrictions
+    const blob = new Blob([code], { type: 'application/javascript' });
+    const blobUrl = URL.createObjectURL(blob);
+    
+    // Create script element with external source (Blob URL)
+    const script = document.createElement('script');
+    script.src = blobUrl; // Using src instead of textContent bypasses CSP
+    script.setAttribute('data-plugin', name);
+    
+    // Cleanup after load
+    script.onload = () => {
+      URL.revokeObjectURL(blobUrl); // Free memory
+      script.remove(); // Remove script element
+      console.log(`[ContentBridge] Plugin ${name} injected and cleaned up`);
+    };
+    
+    script.onerror = (error) => {
+      URL.revokeObjectURL(blobUrl);
+      console.error(`[ContentBridge] Error loading plugin ${name}:`, error);
+    };
+    
+    // Inject into page context
+    (document.head || document.documentElement).appendChild(script);
+    
+  } catch (error) {
+    console.error(`[ContentBridge] Error injecting plugin ${name}:`, error);
+  }
+});
+
 // Listen for messages from injected scripts (page context)
 window.addEventListener('message', (event) => {
   // Only accept messages from same window

