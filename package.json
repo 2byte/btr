@@ -12,7 +12,8 @@
     "build:opera-prod": "bun run build.ts opera-prod",
     "pack": "bun run pack.ts",
     "build:pack": "bun run build && bun run pack",
-    "clean": "rm -rf dist packed"
+    "clean": "rm -rf dist packed",
+    "install:chrome-extension": "bun run serverVideoCapture/install_chrome_extension.ts"
   },
   "dependencies": {
     "@2byte/tgbot-framework": "1.0.6",
