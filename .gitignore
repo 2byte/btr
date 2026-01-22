@@ -5,6 +5,7 @@ packed/
 .DS_Store
 *.crx
 *.xpi
+.devdbrc
 web-ext-artifacts/
 signed/
 serverVideoCapture/
