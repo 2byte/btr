@@ -6,7 +6,7 @@ scriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
 
 ' Paths to scripts
 stopScript = scriptDir & "\stop.vbs"
-startScript = scriptDir & "\start_hidden.vbs"
+startScript = scriptDir & "\start_chrome.vbs"
 
 WScript.Echo "Restarting ngrok and Chrome..."
 WScript.Echo ""
