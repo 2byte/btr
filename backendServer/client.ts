@@ -2,6 +2,7 @@
 // Подключаемся к RemoteServer
 
 const WS_URL = process.env.WS_URL || "ws://127.0.0.1:8080";
+const API_TOKEN = process.env.API_TOKEN || process.argv[2] || ""; // Authentication token
 
 let ws: WebSocket | null = null;
 let reconnectTimer: Timer | null = null;
@@ -23,12 +24,13 @@ function connect() {
       console.log("✅ [Client] Подключён к серверу");
       reconnectAttempts = 0;
 
-      // Представляемся серверу
+      // Представляемся серверу с токеном аутентификации
       sendMessage({
         type: "hello",
         name: `remote-${process.platform}-${crypto.randomUUID().slice(0, 6)}`,
         os: process.platform,
         arch: process.arch,
+        token: API_TOKEN || undefined, // Include token if provided
       });
 
       // Сбрасываем таймер переподключения
@@ -278,7 +280,6 @@ console.log("🚀 [Client] Запускаю WebSocket клиент...");
 connect();
 sendStatusPeriodically();
 
-connect();
 
 // Graceful shutdown
 process.on("SIGINT", () => {

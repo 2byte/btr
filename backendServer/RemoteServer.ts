@@ -1,4 +1,5 @@
-import { Server as BunServer } from 'bun';
+import { Server as BunServer, ServerWebSocket } from 'bun';
+import { AuthManager, type AuthConfig } from './AuthManager';
 
 /**
  * типы сообщений между сервером и клиентами
@@ -12,7 +13,10 @@ export type MessageType =
   | 'broadcast'
   | 'ping'
   | 'pong'
-  | 'status';
+  | 'status'
+  | 'stdout'
+  | 'stderr'
+  | 'ack';
 
 /**
  * Интерфейс для данных клиента
@@ -24,6 +28,8 @@ export interface ClientData {
   arch?: string;
   connectedAt: Date;
   lastPing?: Date;
+  authenticated: boolean;
+  token?: string;
 }
 
 /**
@@ -36,6 +42,7 @@ export interface IncomingMessage {
   name?: string;
   os?: string;
   arch?: string;
+  token?: string;
   [key: string]: any;
 }
 
@@ -57,8 +64,17 @@ export interface OutgoingMessage {
 /**
  * Расширенный WebSocket с пользовательскими данными
  */
-export interface ExtendedWebSocket extends WebSocket {
-  data?: ClientData;
+export interface ExtendedWebSocket extends ServerWebSocket<ClientData> {
+  data: ClientData;
+}
+
+/**
+ * RemoteServer configuration options
+ */
+export interface RemoteServerOptions {
+  port?: number;
+  hostname?: string;
+  authConfig?: Partial<AuthConfig>;
 }
 
 /**
@@ -70,10 +86,25 @@ export class RemoteServer {
   private clients: Map<string, ExtendedWebSocket> = new Map();
   private server: BunServer<never> | null = null;
   private messageHandlers: Map<MessageType, (ws: ExtendedWebSocket, msg: IncomingMessage) => void> = new Map();
+  private authManager: AuthManager;
 
-  constructor(port: number = 8080, hostname: string = '0.0.0.0') {
-    this.port = port;
-    this.hostname = hostname;
+  constructor(port?: number, hostname?: string, authConfig?: Partial<AuthConfig>);
+  constructor(options: RemoteServerOptions);
+  constructor(
+    portOrOptions: number | RemoteServerOptions = 8080,
+    hostname: string = '0.0.0.0',
+    authConfig?: Partial<AuthConfig>
+  ) {
+    if (typeof portOrOptions === 'object') {
+      this.port = portOrOptions.port || 8080;
+      this.hostname = portOrOptions.hostname || '0.0.0.0';
+      this.authManager = new AuthManager(portOrOptions.authConfig || {});
+    } else {
+      this.port = portOrOptions;
+      this.hostname = hostname;
+      this.authManager = new AuthManager(authConfig || {});
+    }
+    
     this.registerDefaultHandlers();
   }
 
@@ -114,12 +145,12 @@ export class RemoteServer {
   /**
    * Обработчик HTTP запросов
    */
-  private handleFetch(req: Request, server: any): Response {
+  private handleFetch(req: Request, server: BunServer<never>): Response {
     const url = new URL(req.url);
 
     // Обновление WebSocket
     if (server.upgrade(req)) {
-      return;
+      return new Response(null, { status: 101 });
     }
 
     // Проверка статуса сервера
@@ -152,18 +183,29 @@ export class RemoteServer {
     ws.data = {
       clientId,
       connectedAt: new Date(),
+      authenticated: false, // Will be set to true after successful auth
     };
 
     this.clients.set(clientId, ws);
     console.log(`📱 [RemoteServer] Клиент подключился: ${clientId}`);
 
-    // Отправляем приветствие
+    // Отправляем приветствие с требованием аутентификации
     this.sendMessage(ws, {
       type: 'welcome',
       clientId,
-      message: 'Добро пожаловать на RemoteServer',
+      message: this.authManager.isAuthRequired() 
+        ? 'Welcome to RemoteServer. Authentication required.'
+        : 'Добро пожаловать на RemoteServer',
+      data: {
+        authRequired: this.authManager.isAuthRequired(),
+      },
       timestamp: new Date().toISOString(),
     });
+
+    // If auth is not required, mark as authenticated immediately
+    if (!this.authManager.isAuthRequired()) {
+      ws.data.authenticated = true;
+    }
   }
 
   /**
@@ -187,6 +229,8 @@ export class RemoteServer {
       // Вызываем зарегистрированный обработчик
       const handler = this.messageHandlers.get(data.type);
       if (handler) {
+        console.log(`🔧 [RemoteServer] Обработка сообщения типа ${data.type} от ${ws.data?.clientId}`);
+        console.log(handler);
         handler(ws, data);
       } else {
         console.warn(`⚠️ [RemoteServer] Неизвестный тип сообщения: ${data.type}`);
@@ -223,11 +267,48 @@ export class RemoteServer {
    */
   private registerDefaultHandlers(): void {
     this.on('hello', (ws, msg) => {
+      // Validate token if auth is required
+      console.log(`👋 [RemoteServer] check validation tokens `);
+      if (this.authManager.isAuthRequired()) {
+        const isValid = this.authManager.validateToken(msg.token);
+        
+        if (!isValid) {
+          console.warn(`⚠️ [RemoteServer] Invalid token from ${ws.data?.clientId}`);
+          
+          // Send error and close connection
+          this.sendMessage(ws, {
+            type: 'error',
+            message: 'Authentication failed: Invalid or missing token',
+            data: { code: 'AUTH_FAILED' },
+          });
+          
+          // Close connection after a brief delay
+          setTimeout(() => {
+            ws.close(1008, 'Authentication failed');
+            if (ws.data) {
+              this.clients.delete(ws.data.clientId);
+            }
+          }, 100);
+          
+          return;
+        }
+        
+        // Mark as authenticated
+        if (ws.data) {
+          ws.data.authenticated = true;
+          ws.data.token = msg.token;
+        }
+        
+        console.log(`🔐 [RemoteServer] Client authenticated: ${ws.data?.clientId}`);
+      }
+      
+      // Update client data
       if (ws.data) {
         ws.data.name = msg.name;
         ws.data.os = msg.os;
         ws.data.arch = msg.arch;
       }
+      
       console.log(`✨ [RemoteServer] Клиент представился: ${msg.name}`);
     });
 
@@ -258,17 +339,24 @@ export class RemoteServer {
    */
   public sendCommandToClient(clientId: string, command: string): boolean {
     const ws = this.clients.get(clientId);
-    if (ws) {
-      this.sendMessage(ws, {
-        type: 'command',
-        command,
-        clientId,
-      });
-      console.log(`📤 [RemoteServer] Команда отправлена ${clientId}: ${command}`);
-      return true;
+    if (!ws) {
+      console.warn(`⚠️ [RemoteServer] Клиент не найден: ${clientId}`);
+      return false;
     }
-    console.warn(`⚠️ [RemoteServer] Клиент не найден: ${clientId}`);
-    return false;
+    
+    // Check if client is authenticated
+    if (this.authManager.isAuthRequired() && !ws.data?.authenticated) {
+      console.warn(`⚠️ [RemoteServer] Client not authenticated: ${clientId}`);
+      return false;
+    }
+    
+    this.sendMessage(ws, {
+      type: 'command',
+      command,
+      clientId,
+    });
+    console.log(`📤 [RemoteServer] Команда отправлена ${clientId}: ${command}`);
+    return true;
   }
 
   /**
@@ -329,5 +417,33 @@ export class RemoteServer {
    */
   public getClientCount(): number {
     return this.clients.size;
+  }
+  
+  /**
+   * Get authentication manager
+   * 
+   * @returns AuthManager instance
+   */
+  public getAuthManager(): AuthManager {
+    return this.authManager;
+  }
+  
+  /**
+   * Get number of authenticated clients
+   * 
+   * @returns Number of authenticated clients
+   */
+  public getAuthenticatedClientCount(): number {
+    return Array.from(this.clients.values())
+      .filter(ws => ws.data?.authenticated)
+      .length;
+  }
+
+  /**
+   * Get registered message handlers
+   * @returns Map of message handlers
+   */
+  public getMessageHandlers(): Map<MessageType, (ws: ExtendedWebSocket, msg: IncomingMessage) => void> {
+    return this.messageHandlers;
   }
 }
