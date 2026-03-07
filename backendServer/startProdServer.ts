@@ -9,6 +9,7 @@ if (process.env.API_TOKENS) {
 
 const server = ServerBuilder.init()
   .port(process.env.REMOTE_SERVER_PORT ? parseInt(process.env.REMOTE_SERVER_PORT) : 8013)
+  .webPanelHostname(process.env.WEB_PANEL_HOST || 'localhost')
   .webPanelPort(process.env.WEB_PANEL_PORT ? parseInt(process.env.WEB_PANEL_PORT) : 3034)
   .serverHostname(process.env.REMOTE_SERVER_HOST || 'localhost')
   .enableAuth(true)

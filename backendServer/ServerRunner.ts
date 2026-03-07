@@ -7,6 +7,8 @@ export interface ServerConfig {
 
   serverHostname?: string; // Optional hostname for RemoteServer (default: 'localhost')
 
+  webPanelHostname?: string; // Optional hostname for WebPanel (default: 'localhost')
+
   // WebPanel port (for browser access)
   webPanelPort: number;
 
@@ -33,6 +35,7 @@ export class ServerBuilder {
       serverPort: 8080,
       serverHostname: "localhost",
       webPanelPort: 3000,
+      webPanelHostname: "localhost",
       enableAuth: false,
       publicPath: "./public",
       authTokens: [],
@@ -50,6 +53,11 @@ export class ServerBuilder {
 
   webPanelPort(port: number): this {
     this.configBundle.webPanelPort = port;
+    return this;
+  }
+
+  webPanelHostname(hostname: string): this {
+    this.configBundle.webPanelHostname = hostname;
     return this;
   }
 
@@ -105,6 +113,7 @@ export class ServerRunner {
       port: this.config.webPanelPort,
       publicPath: this.config.publicPath,
       enableAuth: this.config.enableAuth,
+      hostname: this.config.webPanelHostname || 'localhost',
     });
 
     // Optional: Add custom event handlers

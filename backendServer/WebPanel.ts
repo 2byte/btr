@@ -11,6 +11,10 @@ import { AuthManager } from './AuthManager';
  * WebPanel options
  */
 export interface WebPanelOptions {
+  /** Server hostname for display in dashboard URL (e.g. localhost or IP address)
+   * @default 'localhost'
+   */
+  hostname?: string; // Server hostname (for display in dashboard URL)
   /**
    * Port for web panel HTTP server
    * @default 3000
@@ -109,7 +113,8 @@ export class WebPanel {
       port: options.port ?? 3000,
       publicPath: options.publicPath ?? './public',
       enableAuth: options.enableAuth ?? true,
-      authToken: options.authToken ?? process.env.WEB_PANEL_TOKEN ?? ''
+      authToken: options.authToken ?? process.env.WEB_PANEL_TOKEN ?? '',
+      hostname: options.hostname ?? 'localhost'
     };
 
     this.clients = new Map();
@@ -705,8 +710,8 @@ export class WebPanel {
    */
   async start(): Promise<void> {
     return new Promise((resolve) => {
-      this.httpServer = this.app.listen(this.options.port, () => {
-        console.log(`🌐 [WebPanel] HTTP server started on http://localhost:${this.options.port}`);
+      this.httpServer = this.app.listen(this.options.port, this.options.hostname, () => {
+        console.log(`🌐 [WebPanel] HTTP server started on http://${this.options.hostname}:${this.options.port}`);
         console.log(`📁 [WebPanel] Serving static files from: ${path.resolve(this.options.publicPath)}`);
         console.log(`🔐 [WebPanel] Authentication: ${this.options.enableAuth ? 'ENABLED' : 'DISABLED'}`);
         
