@@ -1,4 +1,5 @@
-import { Server as BunServer, ServerWebSocket } from 'bun';
+import type { Server as BunServer, ServerWebSocket } from 'bun';
+import { EventEmitter } from 'events';
 import { AuthManager, type AuthConfig } from './AuthManager';
 
 /**
@@ -16,7 +17,28 @@ export type MessageType =
   | 'status'
   | 'stdout'
   | 'stderr'
-  | 'ack';
+  | 'ack'
+  | 'terminal:create'   // Create a terminal session
+  | 'terminal:input'    // Send input to terminal
+  | 'terminal:output'   // Terminal output from client
+  | 'terminal:resize'   // Resize terminal
+  | 'terminal:close'    // Close terminal session
+  | 'terminal:exit'     // Terminal exited
+  | 'terminal:ready'    // Terminal is ready
+  | 'terminal:error'    // Terminal error
+  | 'files:list'        // List files in directory
+  | 'files:read'        // Read file content
+  | 'files:mkdir'       // Create directory
+  | 'files:delete'      // Delete file/directory
+  | 'files:rename'      // Rename/move file
+  | 'files:write'       // Write file content
+  | 'files:drives'      // Get available drives (Windows)
+  | 'files:content'     // File content response
+  | 'files:created'     // File/dir created response
+  | 'files:deleted'     // File/dir deleted response
+  | 'files:renamed'     // File/dir renamed response
+  | 'files:written'     // File written response
+  | 'files:error';      // File operation error
 
 /**
  * Интерфейс для данных клиента
@@ -59,6 +81,15 @@ export interface OutgoingMessage {
   exitCode?: number;
   data?: any;
   timestamp?: string;
+  // Terminal-related fields
+  sessionId?: string;
+  cols?: number;
+  rows?: number;
+  cwd?: string;
+  env?: Record<string, string>;
+  shell?: string;
+  code?: number | null;
+  error?: string;
 }
 
 /**
@@ -80,7 +111,7 @@ export interface RemoteServerOptions {
 /**
  * Класс RemoteServer - WebSocket сервер для управления удалёнными клиентами
  */
-export class RemoteServer {
+export class RemoteServer extends EventEmitter {
   private port: number;
   private hostname: string;
   private clients: Map<string, ExtendedWebSocket> = new Map();
@@ -95,6 +126,8 @@ export class RemoteServer {
     hostname: string = '0.0.0.0',
     authConfig?: Partial<AuthConfig>
   ) {
+    super(); // Call EventEmitter constructor
+    
     if (typeof portOrOptions === 'object') {
       this.port = portOrOptions.port || 8080;
       this.hostname = portOrOptions.hostname || '0.0.0.0';
@@ -119,7 +152,7 @@ export class RemoteServer {
       websocket: {
         open: (ws) => this.handleOpen(ws),
         message: (ws, message) => this.handleMessage(ws, message),
-        close: (ws) => this.handleClose(ws),
+        close: (ws, code, reason) => this.handleClose(ws, code, reason),
         ping: (ws, data) => { ws.pong(data); },
       },
       error: (error) => {
@@ -230,7 +263,6 @@ export class RemoteServer {
       const handler = this.messageHandlers.get(data.type);
       if (handler) {
         console.log(`🔧 [RemoteServer] Обработка сообщения типа ${data.type} от ${ws.data?.clientId}`);
-        console.log(handler);
         handler(ws, data);
       } else {
         console.warn(`⚠️ [RemoteServer] Неизвестный тип сообщения: ${data.type}`);
@@ -247,18 +279,21 @@ export class RemoteServer {
   /**
    * Обработчик закрытия соединения
    */
-  private handleClose(ws: ExtendedWebSocket): void {
+  private handleClose(ws: ExtendedWebSocket, code?: number, reason?: string): void {
     if (ws.data) {
       const clientId = ws.data.clientId;
       this.clients.delete(clientId);
-      console.log(`🔌 [RemoteServer] Клиент отключился: ${clientId}`);
+      console.log(`🔌 [RemoteServer] Клиент отключился: ${clientId} (code: ${code}, reason: ${reason || 'none'})`);
+      
+      // Emit event for cleanup (e.g., close terminal sessions)
+      this.emit('client:disconnected', { clientId, code, reason });
     }
   }
 
   /**
    * Регистрирует обработчик для типа сообщения
    */
-  public on(type: MessageType, handler: (ws: ExtendedWebSocket, msg: IncomingMessage) => void): void {
+  public registerMessageHandler(type: MessageType, handler: (ws: ExtendedWebSocket, msg: IncomingMessage) => void): void {
     this.messageHandlers.set(type, handler);
   }
 
@@ -266,7 +301,7 @@ export class RemoteServer {
    * Регистрирует обработчики по умолчанию
    */
   private registerDefaultHandlers(): void {
-    this.on('hello', (ws, msg) => {
+    this.registerMessageHandler('hello', (ws, msg) => {
       // Validate token if auth is required
       console.log(`👋 [RemoteServer] check validation tokens `);
       if (this.authManager.isAuthRequired()) {
@@ -312,7 +347,7 @@ export class RemoteServer {
       console.log(`✨ [RemoteServer] Клиент представился: ${msg.name}`);
     });
 
-    this.on('pong', (ws, msg) => {
+    this.registerMessageHandler('pong', (ws, msg) => {
       if (ws.data) {
         ws.data.lastPing = new Date();
       }
@@ -445,5 +480,40 @@ export class RemoteServer {
    */
   public getMessageHandlers(): Map<MessageType, (ws: ExtendedWebSocket, msg: IncomingMessage) => void> {
     return this.messageHandlers;
+  }
+  
+  /**
+   * Send a message to a specific client
+   * 
+   * @param clientId - Client ID
+   * @param message - Message to send
+   * @returns true if sent successfully, false otherwise
+   */
+  public sendToClient(clientId: string, message: OutgoingMessage): boolean {
+    const ws = this.clients.get(clientId);
+    if (!ws) {
+      console.warn(`⚠️ [RemoteServer] Client not found: ${clientId}`);
+      console.warn(`[RemoteServer] Available clients:`, Array.from(this.clients.keys()));
+      return false;
+    }
+    
+    // Check if client is authenticated (only for auth-required messages)
+    if (this.authManager.isAuthRequired() && !ws.data?.authenticated && message.type !== 'welcome') {
+      console.warn(`⚠️ [RemoteServer] Client not authenticated: ${clientId}`);
+      return false;
+    }
+    
+    console.log(`[RemoteServer] Sending message type '${message.type}' to client ${clientId}`);
+    this.sendMessage(ws, message);
+    return true;
+  }
+  
+  /**
+   * Get clients map (for internal use)
+   * 
+   * @returns Map of clients
+   */
+  public getClientsMap(): Map<string, ExtendedWebSocket> {
+    return this.clients;
   }
 }

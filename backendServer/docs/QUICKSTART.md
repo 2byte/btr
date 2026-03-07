@@ -326,4 +326,190 @@ API_TOKEN=your-token bun client.ts
 
 ---
 
+## 🌐 Web Panel - Управление через браузер
+
+### Что это?
+
+**WebPanel** - веб-интерфейс для управления удаленными клиентами через браузер с полноценными PTY терминалами.
+
+**Возможности:**
+- 🖥️ Веб-терминал с xterm.js (как в VS Code, Termius)
+- 📊 Dashboard со списком клиентов
+- 🔄 Real-time streaming через WebSocket
+- 🎨 Современный dark theme UI
+- 🔐 Поддержка аутентификации
+- 📡 REST API для интеграции
+
+### Быстрый старт
+
+```bash
+# Запуск примера с веб-панелью
+bun run backendServer/example-web-panel.ts
+
+# В другом терминале запустить клиент
+bun run backendServer/client.ts
+
+# Открыть браузер
+http://localhost:3000
+```
+
+### Создание своего сервера
+
+```typescript
+import { RemoteServer } from './RemoteServer';
+import { ClientCommunicator } from './ClientCommunicator';
+import { WebPanel } from './WebPanel';
+
+// 1. Создать сервер для клиентов
+const server = new RemoteServer({ port: 8080 });
+
+// 2. Создать коммуникатор
+const communicator = new ClientCommunicator(server);
+
+// 3. Создать веб-панель
+const webPanel = new WebPanel(communicator, server, {
+  port: 3000,           // Порт для браузера
+  publicPath: './public', // Путь к HTML/CSS/JS
+  enableAuth: true      // Включить аутентификацию
+});
+
+// 4. Запустить все
+await server.start();
+await webPanel.start();
+
+console.log('Open http://localhost:3000');
+```
+
+### Использование терминала
+
+1. Открываем dashboard: `http://localhost:3000`
+2. Видим список подключенных клиентов
+3. Нажимаем "Open Terminal" на нужном клиенте
+4. Получаем полноценный терминал с:
+   - Интерактивными приложениями (vim, nano, htop)
+   - Яркими цветами (ANSI escape codes)
+   - Автоматическим resize
+   - Копированием/вставкой
+
+### REST API
+
+```bash
+# Получить список клиентов
+curl -H "Authorization: Bearer TOKEN" http://localhost:3000/api/clients
+
+# Выполнить команду через API
+curl -X POST http://localhost:3000/api/clients/CLIENT_ID/execute \
+  -H "Authorization: Bearer TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"command": "echo Hello", "timeout": 30000}'
+
+# Health check
+curl http://localhost:3000/api/health
+```
+
+### WebSocket Protocol
+
+```javascript
+// Подключение к терминалу через WebSocket
+const ws = new WebSocket('ws://localhost:3000/ws');
+
+// Аутентификация
+ws.send(JSON.stringify({
+  type: 'auth',
+  token: 'your-token'
+}));
+
+// Создание терминальной сессии
+ws.send(JSON.stringify({
+  type: 'terminal:create',
+  clientId: 'client-123',
+  cols: 80,
+  rows: 24
+}));
+
+// Отправка ввода
+ws.send(JSON.stringify({
+  type: 'terminal:input',
+  sessionId: 'session-id',
+  data: 'ls -la\n'
+}));
+
+// Получение вывода
+ws.onmessage = (e) => {
+  const msg = JSON.parse(e.data);
+  if (msg.type === 'terminal:output') {
+    console.log(msg.data);
+  }
+};
+```
+
+### Файлы
+
+- **WebPanel.ts** - Сервер веб-панели ⭐
+- **TerminalSessionManager.ts** - Управление PTY сессиями
+- **terminal-handler.ts** - PTY обработчик на клиенте
+- **example-web-panel.ts** - Пример использования ⭐
+- **public/dashboard.html** - Главная страница
+- **public/terminal.html** - Страница терминала с xterm.js
+- **public/styles.css** - Стили UI
+- **WEB_PANEL_README.md** - Полная документация ⭐
+
+### Архитектура
+
+```
+┌──────────────┐
+│   Browser    │  ← Веб UI (xterm.js)
+└──────┬───────┘
+       │ HTTP/WS
+       ▼
+┌──────────────┐
+│  WebPanel    │  ← Express + WebSocket сервер
+│  (port 3000) │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────────┐
+│ TerminalSession  │  ← Управление PTY сессиями
+│     Manager      │
+└──────┬───────────┘
+       │
+       ▼
+┌──────────────────┐
+│  RemoteServer    │  ← WebSocket для клиентов
+│   (port 8080)    │
+└──────┬───────────┘
+       │ WS
+       ▼
+┌──────────────────┐
+│     Client       │  ← Удаленная машина
+│ (terminal-       │
+│  handler + PTY)  │
+└──────────────────┘
+```
+
+### Production deployment
+
+```nginx
+# nginx config для HTTPS/WSS
+server {
+    listen 443 ssl;
+    server_name terminal.example.com;
+    
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+    
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+    }
+}
+```
+
+**Подробнее:** [WEB_PANEL_README.md](WEB_PANEL_README.md)
+
+---
+
 **Документация на английском в коде, для вас в чате на русском! 🎯**

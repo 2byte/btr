@@ -300,6 +300,101 @@ wscat -c ws://localhost:8080
 - **Throughput**: зависит от размера сообщений и пропускной способности сети
 - **Latency**: обычно < 100ms для местной сети
 
+## 🚀 Новые возможности
+
+### ClientCommunicator - High-level API
+
+Высокоуровневый API для управления клиентами с удобными методами:
+
+```typescript
+import { ClientCommunicator } from './ClientCommunicator';
+
+const comm = new ClientCommunicator(server);
+
+// Выполнить команду с потоковым выводом
+const result = await comm.executeCommand(clientId, 'npm install');
+
+// Подписаться на real-time вывод
+comm.on('command:stdout', (execId, chunk) => {
+  process.stdout.write(chunk);
+});
+
+// Дождаться завершения
+const final = await comm.waitForCompletion(result.execId);
+console.log(`Exit code: ${final.exitCode}`);
+```
+
+**Подробнее**: [CLIENT_COMMUNICATOR_README.md](CLIENT_COMMUNICATOR_README.md)
+
+### WebPanel - Управление через браузер
+
+Веб-интерфейс с полноценными PTY терминалами:
+
+```typescript
+import { WebPanel } from './WebPanel';
+
+const webPanel = new WebPanel(communicator, server, {
+  port: 3000,
+  enableAuth: true
+});
+
+await webPanel.start();
+console.log('Open http://localhost:3000');
+```
+
+**Возможности:**
+- 🖥️ Веб-терминал с xterm.js (как в VS Code, Termius)
+- 📊 Dashboard со списком клиентов
+- 🔄 Real-time streaming через WebSocket
+- 📡 REST API для интеграции
+- 🎨 Современный dark theme UI
+
+**Подробнее**: [WEB_PANEL_README.md](WEB_PANEL_README.md)
+
+### Authentication - Безопасность
+
+Полноценная система аутентификации на основе токенов:
+
+```typescript
+// Сервер с аутентификацией
+const server = new RemoteServer({
+  port: 8080,
+  enableAuth: true,
+  tokens: ['client-token']
+});
+
+// Клиент с токеном
+API_TOKEN=client-token bun client.ts
+```
+
+**Генерация токенов:**
+```bash
+bun run backendServer/generate-token.ts --name "client-1"
+```
+
+**Подробнее**: [AUTH_README.md](AUTH_README.md)
+
+## 📚 Документация
+
+| Документ | Описание |
+|----------|----------|
+| [QUICKSTART.md](QUICKSTART.md) | Быстрый старт за 30 секунд ⭐ |
+| [CLIENT_COMMUNICATOR_README.md](CLIENT_COMMUNICATOR_README.md) | ClientCommunicator API |
+| [WEB_PANEL_README.md](WEB_PANEL_README.md) | Web Panel с терминалами |
+| [AUTH_README.md](AUTH_README.md) | Аутентификация и безопасность |
+| [AUTH_MIGRATION.md](AUTH_MIGRATION.md) | Миграция на auth |
+| [AUTH_SUMMARY.md](AUTH_SUMMARY.md) | Краткая сводка по auth |
+
+## 🎯 Примеры
+
+| Файл | Описание |
+|------|----------|
+| [example-usage.ts](example-usage.ts) | Примеры ClientCommunicator |
+| [example-web-panel.ts](example-web-panel.ts) | Пример веб-панели ⭐ |
+| [test-communicator.ts](test-communicator.ts) | Быстрый тест ⭐ |
+| [test-auth.ts](test-auth.ts) | Тест аутентификации |
+| [generate-token.ts](generate-token.ts) | Генератор токенов |
+
 ## Лицензия
 
 MIT (или другое)

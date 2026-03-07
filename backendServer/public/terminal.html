@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote Terminal</title>
+    
+    <!-- Xterm.js CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: #252526;
+            padding: 15px 20px;
+            border-bottom: 1px solid #3c3c3c;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        h1 {
+            font-size: 16px;
+            color: #fff;
+            font-weight: 500;
+        }
+
+        .client-id {
+            font-family: 'Courier New', monospace;
+            color: #4ec9b0;
+            font-size: 13px;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4ec9b0;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .status-dot.disconnected {
+            background: #f48771;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .header-right {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 8px 16px;
+            background: #0e639c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #1177bb;
+        }
+
+        button.danger {
+            background: #a1260d;
+        }
+
+        button.danger:hover {
+            background: #c72e0d;
+        }
+
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+
+        .auth-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .auth-overlay.show {
+            display: flex;
+        }
+
+        .auth-box {
+            background: #252526;
+            padding: 30px;
+            border-radius: 8px;
+            width: 400px;
+            max-width: 90%;
+        }
+
+        .auth-box h2 {
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            background: #3c3c3c;
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: #d4d4d4;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        input[type="password"]:focus {
+            outline: none;
+            border-color: #007acc;
+        }
+
+        .error-message {
+            color: #f48771;
+            margin-bottom: 15px;
+            font-size: 13px;
+        }
+
+        #terminal-container {
+            flex: 1;
+            padding: 10px;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #terminal {
+            width: 100%;
+            height: 100%;
+        }
+
+        .connection-message {
+            padding: 20px;
+            text-align: center;
+            color: #858585;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #3c3c3c;
+            border-top-color: #007acc;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Xterm.js customization */
+        .xterm {
+            height: 100%;
+            padding: 10px;
+        }
+
+        .xterm-viewport {
+            background-color: #000 !important;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-left">
+            <h1>📟 Remote Terminal</h1>
+            <span class="client-id" id="client-id">Loading...</span>
+        </div>
+        <div class="header-right">
+            <div class="status">
+                <div class="status-dot" id="status-dot"></div>
+                <span id="status-text">Connecting...</span>
+            </div>
+            <button onclick="reconnect()" id="reconnect-btn" style="display:none;">Reconnect</button>
+            <button onclick="clearTerminal()">Clear</button>
+            <button onclick="window.close()" class="danger">Close</button>
+        </div>
+    </header>
+
+    <!-- Authentication overlay -->
+    <div class="auth-overlay" id="auth-overlay">
+        <div class="auth-box">
+            <h2>🔐 Authentication Required</h2>
+            <input 
+                type="password" 
+                id="auth-token" 
+                placeholder="Enter access token..."
+                autocomplete="off"
+            >
+            <div class="error-message" id="auth-error" style="display: none;"></div>
+            <button onclick="authenticate()" style="width: 100%;">Authenticate</button>
+        </div>
+    </div>
+
+    <!-- Terminal container -->
+    <div id="terminal-container">
+        <div id="terminal"></div>
+    </div>
+
+    <!-- Xterm.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.js"></script>
+
+    <script>
+        // Get client ID and shell from URL
+        const pathParts = window.location.pathname.split('/');
+        const clientId = pathParts[pathParts.length - 1];
+        const urlParams = new URLSearchParams(window.location.search);
+        const preferredShell = urlParams.get('shell') || '';
+        
+        document.getElementById('client-id').textContent = clientId;
+        
+        // Show shell in title if specified
+        if (preferredShell) {
+            const shellName = preferredShell.includes('bash') ? 'Bash' : 
+                             preferredShell.includes('pwsh') ? 'PowerShell Core' :
+                             preferredShell.includes('powershell') ? 'PowerShell' :
+                             preferredShell.includes('cmd') ? 'CMD' : preferredShell;
+            document.title = `Terminal (${shellName}) - ${clientId}`;
+        }
+
+        // Terminal setup
+        let term = null;
+        let fitAddon = null;
+        let ws = null;
+        let sessionId = null;
+        let authenticated = false;
+        let authRequired = false;
+
+        // Initialize terminal
+        function initTerminal() {
+            term = new Terminal({
+                cursorBlink: true,
+                cursorStyle: 'block',
+                fontFamily: '"Cascadia Code", "Courier New", monospace',
+                fontSize: 14,
+                lineHeight: 1.2,
+                theme: {
+                    background: '#000000',
+                    foreground: '#ffffff',
+                    cursor: '#ffffff',
+                    cursorAccent: '#000000',
+                    black: '#000000',
+                    red: '#e06c75',
+                    green: '#98c379',
+                    yellow: '#d19a66',
+                    blue: '#61afef',
+                    magenta: '#c678dd',
+                    cyan: '#56b6c2',
+                    white: '#abb2bf',
+                    brightBlack: '#5c6370',
+                    brightRed: '#e06c75',
+                    brightGreen: '#98c379',
+                    brightYellow: '#d19a66',
+                    brightBlue: '#61afef',
+                    brightMagenta: '#c678dd',
+                    brightCyan: '#56b6c2',
+                    brightWhite: '#ffffff'
+                },
+                allowProposedApi: true
+            });
+
+            // Fit addon for responsive sizing
+            fitAddon = new FitAddon.FitAddon();
+            term.loadAddon(fitAddon);
+
+            // Web links addon
+            const webLinksAddon = new WebLinksAddon.WebLinksAddon();
+            term.loadAddon(webLinksAddon);
+
+            // Open terminal
+            term.open(document.getElementById('terminal'));
+            fitAddon.fit();
+
+            // Handle terminal input
+            term.onData((data) => {
+                console.log('[Terminal] Input data:', data);
+                if (ws && ws.readyState === WebSocket.OPEN && sessionId) {
+                    console.log('[Terminal] Sending input to server for session:', sessionId);
+                    ws.send(JSON.stringify({
+                        type: 'terminal:input',
+                        sessionId: sessionId,
+                        data: data
+                    }));
+                } else {
+                    console.warn('[Terminal] Cannot send input - ws:', ws?.readyState, 'sessionId:', sessionId);
+                }
+            });
+
+            // Handle terminal resize
+            term.onResize(({ cols, rows }) => {
+                if (ws && ws.readyState === WebSocket.OPEN && sessionId) {
+                    ws.send(JSON.stringify({
+                        type: 'terminal:resize',
+                        sessionId: sessionId,
+                        cols: cols,
+                        rows: rows
+                    }));
+                }
+            });
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                if (fitAddon && term) {
+                    fitAddon.fit();
+                }
+            });
+
+            // Focus terminal on click
+            document.getElementById('terminal').addEventListener('click', () => {
+                if (term) {
+                    term.focus();
+                    console.log('[Terminal] Focused on click');
+                }
+            });
+
+            // Welcome message
+            term.writeln('\x1b[1;32m╔════════════════════════════════════════╗\x1b[0m');
+            term.writeln('\x1b[1;32m║   Remote Terminal Session Starting    ║\x1b[0m');
+            term.writeln('\x1b[1;32m╚════════════════════════════════════════╝\x1b[0m');
+            term.writeln('');
+            term.writeln('\x1b[33mConnecting to remote client...\x1b[0m');
+            term.writeln('');
+            
+            // Focus terminal so it's ready for input
+            term.focus();
+            console.log('[Terminal] Terminal initialized and focused');
+        }
+
+        // Connect to WebSocket
+        function connect() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                updateStatus('connected', 'Connected');
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleMessage(data);
+            };
+
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                updateStatus('disconnected', 'Disconnected');
+                document.getElementById('reconnect-btn').style.display = 'inline-block';
+                
+                if (term) {
+                    term.writeln('');
+                    term.writeln('\x1b[31m[Connection lost. Click "Reconnect" to restore connection.]\x1b[0m');
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                updateStatus('error', 'Error');
+            };
+        }
+
+        // Handle WebSocket messages
+        function handleMessage(data) {
+            switch (data.type) {
+                case 'welcome':
+                    authRequired = data.authRequired;
+                    if (authRequired) {
+                        document.getElementById('auth-overlay').classList.add('show');
+                        // Try stored token
+                        const storedToken = localStorage.getItem('auth-token');
+                        if (storedToken) {
+                            sendAuth(storedToken);
+                        }
+                    } else {
+                        authenticated = true;
+                        createTerminalSession();
+                    }
+                    break;
+
+                case 'auth':
+                    if (data.success) {
+                        authenticated = true;
+                        document.getElementById('auth-overlay').classList.remove('show');
+                        document.getElementById('auth-error').style.display = 'none';
+                        createTerminalSession();
+                    } else {
+                        document.getElementById('auth-error').textContent = 
+                            data.error || 'Authentication failed';
+                        document.getElementById('auth-error').style.display = 'block';
+                    }
+                    break;
+
+                case 'terminal:create':
+                    sessionId = data.sessionId;
+                    console.log('[Terminal] Session created:', sessionId);
+                    updateStatus('active', 'Terminal Active');
+                    if (term) {
+                        term.writeln('\x1b[32m[Terminal session created successfully]\x1b[0m');
+                        term.writeln('');
+                        // Focus terminal so it can receive keyboard input
+                        // Ensure terminal stays focused after receiving output
+                        if (!document.hasFocus() || document.activeElement !== term.element) {
+                            term.focus();
+                        }
+                        term.focus();
+                        console.log('[Terminal] Terminal focused and ready for input');
+                    }
+                    break;
+
+                case 'terminal:output':
+                    if (term && data.data) {
+                        term.write(data.data);
+                    }
+                    break;
+
+                case 'terminal:ready':
+                    if (term) {
+                        term.writeln('\x1b[32m[Terminal ready]\x1b[0m');
+                        term.writeln('');
+                    }
+                    break;
+
+                case 'terminal:exit':
+                    updateStatus('disconnected', 'Terminal Exited');
+                    if (term) {
+                        term.writeln('');
+                        term.writeln(`\x1b[33m[Terminal exited with code: ${data.code}]\x1b[0m`);
+                    }
+                    break;
+
+                case 'terminal:error':
+                case 'error':
+                    console.error('Server error:', data.error);
+                    if (term) {
+                        term.writeln('');
+                        term.writeln(`\x1b[31m[Error: ${data.error}]\x1b[0m`);
+                    }
+                    
+                    if (data.error && data.error.includes('Not authenticated')) {
+                        document.getElementById('auth-overlay').classList.add('show');
+                    }
+                    break;
+            }
+        }
+
+        // Create terminal session
+        function createTerminalSession() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const cols = term ? term.cols : 80;
+                const rows = term ? term.rows : 24;
+
+                const message = {
+                    type: 'terminal:create',
+                    clientId: clientId,
+                    cols: cols,
+                    rows: rows
+                };
+                
+                // Add shell preference if specified
+                if (preferredShell) {
+                    message.shell = preferredShell;
+                }
+
+                ws.send(JSON.stringify(message));
+            }
+        }
+
+        // Send authentication
+        function sendAuth(token) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'auth',
+                    token: token
+                }));
+            }
+        }
+
+        // Authenticate button handler
+        function authenticate() {
+            const token = document.getElementById('auth-token').value.trim();
+            if (!token) {
+                document.getElementById('auth-error').textContent = 'Please enter a token';
+                document.getElementById('auth-error').style.display = 'block';
+                return;
+            }
+
+            localStorage.setItem('auth-token', token);
+            sendAuth(token);
+        }
+
+        // Update connection status
+        function updateStatus(state, text) {
+            const dot = document.getElementById('status-dot');
+            const statusText = document.getElementById('status-text');
+
+            statusText.textContent = text;
+
+            if (state === 'connected' || state === 'active') {
+                dot.classList.remove('disconnected');
+            } else {
+                dot.classList.add('disconnected');
+            }
+        }
+
+        // Reconnect
+        function reconnect() {
+            document.getElementById('reconnect-btn').style.display = 'none';
+            connect();
+        }
+
+        // Clear terminal
+        function clearTerminal() {
+            if (term) {
+                term.clear();
+            }
+        }
+
+        // Cleanup on page close
+        window.addEventListener('beforeunload', () => {
+            if (ws && sessionId) {
+                ws.send(JSON.stringify({
+                    type: 'terminal:close',
+                    sessionId: sessionId
+                }));
+            }
+        });
+
+        // Auth on Enter key
+        document.getElementById('auth-token')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                authenticate();
+            }
+        });
+
+        // Initialize
+        initTerminal();
+        connect();
+    </script>
+</body>
+</html>

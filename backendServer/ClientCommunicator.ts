@@ -1,4 +1,5 @@
-import { RemoteServer, MessageType, IncomingMessage, OutgoingMessage, ClientData, ExtendedWebSocket, RemoteServerOptions } from './RemoteServer';
+import { RemoteServer } from './RemoteServer';
+import type { ClientData, ExtendedWebSocket, RemoteServerOptions } from './RemoteServer';
 import { EventEmitter } from 'events';
 import { AuthManager, type AuthConfig } from './AuthManager';
 
@@ -602,5 +603,14 @@ export class ClientCommunicator extends EventEmitter {
    */
   public getAuthenticatedClientCount(): number {
     return this.server.getAuthenticatedClientCount();
+  }
+
+  /**
+   * Get underlying RemoteServer instance
+   * 
+   * @returns RemoteServer instance
+   */
+  public getServer(): RemoteServer {
+    return this.server;
   }
 }
