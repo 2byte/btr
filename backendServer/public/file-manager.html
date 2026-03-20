@@ -865,7 +865,7 @@
             switch (message.type) {
 
                 case 'welcome':
-                    authRequired = data.authRequired;
+                    authRequired = message.authRequired;
                     if (authRequired) {
                         document.getElementById('auth-overlay').classList.add('show');
                         // Try stored token
@@ -879,7 +879,7 @@
                     break;
 
                 case 'auth':
-                    if (data.success) {
+                    if (message.success) {
                         authenticated = true;
                         document.getElementById('auth-overlay').classList.remove('show');
                         document.getElementById('auth-error').style.display = 'none';
@@ -887,7 +887,7 @@
                         requestDirectory('');
                     } else {
                         document.getElementById('auth-error').textContent = 
-                            data.error || 'Authentication failed';
+                            message.error || 'Authentication failed';
                         document.getElementById('auth-error').style.display = 'block';
                     }
                     break;
