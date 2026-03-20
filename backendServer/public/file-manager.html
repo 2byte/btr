@@ -863,20 +863,33 @@
             console.log('Received:', message);
 
             switch (message.type) {
-                case 'auth:required':
-                    document.getElementById('auth-overlay').classList.add('show');
+
+                case 'welcome':
+                    authRequired = data.authRequired;
+                    if (authRequired) {
+                        document.getElementById('auth-overlay').classList.add('show');
+                        // Try stored token
+                        const storedToken = localStorage.getItem('auth-token');
+                        if (storedToken) {
+                            sendAuth(storedToken);
+                        }
+                    } else {
+                        authenticated = true;
+                    }
                     break;
 
-                case 'auth:success':
-                    authenticated = true;
-                    document.getElementById('auth-overlay').classList.remove('show');
-                    // Request initial directory listing
-                    requestDirectory('');
-                    break;
-
-                case 'auth:failed':
-                    document.getElementById('auth-error').textContent = 'Invalid token';
-                    document.getElementById('auth-error').style.display = 'block';
+                case 'auth':
+                    if (data.success) {
+                        authenticated = true;
+                        document.getElementById('auth-overlay').classList.remove('show');
+                        document.getElementById('auth-error').style.display = 'none';
+                        // Request initial directory listing
+                        requestDirectory('');
+                    } else {
+                        document.getElementById('auth-error').textContent = 
+                            data.error || 'Authentication failed';
+                        document.getElementById('auth-error').style.display = 'block';
+                    }
                     break;
 
                 case 'files:list':
@@ -907,6 +920,16 @@
                     // Refresh current directory
                     requestDirectory(currentPath);
                     break;
+            }
+        }
+
+        // Send authentication
+        function sendAuth(token) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'auth',
+                    token: token
+                }));
             }
         }
 
