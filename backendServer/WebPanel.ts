@@ -4,7 +4,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import path from 'path';
 import { ClientCommunicator } from './ClientCommunicator';
 import { TerminalSessionManager } from './TerminalSessionManager';
-import { RemoteServer, ClientData } from './RemoteServer';
+import { RemoteServer, type ClientData } from './RemoteServer';
 import { AuthManager } from './AuthManager';
 
 /**
