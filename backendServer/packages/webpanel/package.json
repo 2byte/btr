@@ -1,0 +1,23 @@
+{
+  "name": "@comeback/webpanel",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Web panel + backend server for managing remote agents over WebSocket",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "public"
+  ],
+  "dependencies": {
+    "express": "^5.2.1",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/express": "^5",
+    "@types/ws": "^8",
+    "typescript": "^5"
+  }
+}

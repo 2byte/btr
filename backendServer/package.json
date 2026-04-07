@@ -1,8 +1,11 @@
 {
-  "name": "backendserver",
+  "name": "comeback-server",
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "devDependencies": {
     "@types/bun": "latest"
   },

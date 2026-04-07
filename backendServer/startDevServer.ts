@@ -1,4 +1,4 @@
-import { ServerBuilder } from "./ServerRunner"
+import { ServerBuilder } from "@comeback/webpanel";
 
 const tokens = process.env.API_TOKEN ? [process.env.API_TOKEN] : [];
 

@@ -1,0 +1,22 @@
+{
+  "name": "@comeback/client",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Remote agent client for Comeback server — attaches to a RemoteServer over WebSocket and exposes terminal + filesystem access",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "comeback-client": "./src/client.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "dependencies": {
+    "bun-pty": "^0.4.8"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5"
+  }
+}

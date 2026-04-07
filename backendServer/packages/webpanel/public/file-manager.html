@@ -1,0 +1,1576 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        header {
+            background: #252526;
+            padding: 15px 20px;
+            border-bottom: 1px solid #3c3c3c;
+            flex-shrink: 0;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        h1 {
+            font-size: 16px;
+            color: #fff;
+            font-weight: 500;
+        }
+
+        .client-id {
+            font-family: 'Courier New', monospace;
+            color: #4ec9b0;
+            font-size: 13px;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4ec9b0;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .status-dot.disconnected {
+            background: #f48771;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Navigation bar */
+        .nav-bar {
+            background: #2d2d30;
+            padding: 10px 15px;
+            border-bottom: 1px solid #3c3c3c;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .nav-btn {
+            padding: 6px 12px;
+            background: #3c3c3c;
+            border: none;
+            border-radius: 4px;
+            color: #d4d4d4;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background: #505050;
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .breadcrumbs {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .breadcrumb {
+            color: #d4d4d4;
+            text-decoration: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        .breadcrumb:hover {
+            background: #3c3c3c;
+        }
+
+        .breadcrumb.active {
+            color: #4ec9b0;
+        }
+
+        .breadcrumb-separator {
+            color: #555;
+        }
+
+        /* Main content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            background: #252526;
+            border-right: 1px solid #3c3c3c;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 15px;
+            border-bottom: 1px solid #3c3c3c;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            text-transform: uppercase;
+        }
+
+        .add-bookmark-btn {
+            padding: 4px 8px;
+            background: #0e639c;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            transition: background 0.2s;
+        }
+
+        .add-bookmark-btn:hover {
+            background: #1177bb;
+        }
+
+        .bookmarks-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 5px;
+        }
+
+        .bookmark-item {
+            padding: 8px 12px;
+            margin-bottom: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+            font-size: 13px;
+        }
+
+        .bookmark-item:hover {
+            background: #2d2d30;
+        }
+
+        .bookmark-item.active {
+            background: #37373d;
+        }
+
+        .bookmark-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .bookmark-icon {
+            margin-right: 8px;
+        }
+
+        .bookmark-delete {
+            padding: 2px 6px;
+            background: transparent;
+            border: none;
+            color: #858585;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 16px;
+            line-height: 1;
+            transition: all 0.2s;
+            opacity: 0;
+        }
+
+        .bookmark-item:hover .bookmark-delete {
+            opacity: 1;
+        }
+
+        .bookmark-delete:hover {
+            background: #a1260d;
+            color: white;
+        }
+
+        /* File explorer */
+        .file-explorer {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .toolbar {
+            padding: 10px 15px;
+            background: #2d2d30;
+            border-bottom: 1px solid #3c3c3c;
+            display: flex;
+            gap: 10px;
+        }
+
+        .toolbar-btn {
+            padding: 6px 12px;
+            background: #0e639c;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        .toolbar-btn:hover {
+            background: #1177bb;
+        }
+
+        .toolbar-btn.danger {
+            background: #a1260d;
+        }
+
+        .toolbar-btn.danger:hover {
+            background: #c72e0d;
+        }
+
+        .file-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .file-item {
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.2s;
+            font-size: 14px;
+        }
+
+        .file-item:hover {
+            background: #2d2d30;
+        }
+
+        .file-item.selected {
+            background: #37373d;
+            border: 1px solid #007acc;
+        }
+
+        .file-icon {
+            font-size: 20px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .file-info {
+            flex: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .file-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-size {
+            color: #858585;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        /* Preview panel */
+        .preview-panel {
+            width: 400px;
+            background: #252526;
+            border-left: 1px solid #3c3c3c;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .preview-panel.hidden {
+            display: none;
+        }
+
+        .preview-header {
+            padding: 15px;
+            border-bottom: 1px solid #3c3c3c;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .preview-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .close-preview {
+            padding: 4px 8px;
+            background: transparent;
+            border: none;
+            color: #858585;
+            cursor: pointer;
+            font-size: 18px;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+
+        .close-preview:hover {
+            background: #3c3c3c;
+            color: #fff;
+        }
+
+        .preview-content {
+            flex: 1;
+            overflow: auto;
+            padding: 15px;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+
+        .preview-text {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        .preview-info {
+            padding: 10px;
+            background: #2d2d30;
+            border-radius: 4px;
+            margin-top: 15px;
+            font-size: 12px;
+        }
+
+        .preview-info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid #3c3c3c;
+        }
+
+        .preview-info-row:last-child {
+            border-bottom: none;
+        }
+
+        .preview-info-label {
+            color: #858585;
+        }
+
+        /* Loading state */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: #858585;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #3c3c3c;
+            border-top-color: #007acc;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Auth overlay */
+        .auth-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .auth-overlay.show {
+            display: flex;
+        }
+
+        .auth-box {
+            background: #252526;
+            padding: 30px;
+            border-radius: 8px;
+            width: 400px;
+            max-width: 90%;
+        }
+
+        .auth-box h2 {
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        input[type="password"],
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            background: #3c3c3c;
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: #d4d4d4;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #007acc;
+        }
+
+        button.full-width {
+            width: 100%;
+            padding: 12px;
+            background: #0e639c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        button.full-width:hover {
+            background: #1177bb;
+        }
+
+        .error-message {
+            color: #f48771;
+            margin-bottom: 15px;
+            font-size: 13px;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #858585;
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        /* Context menu */
+        .context-menu {
+            position: fixed;
+            background: #2d2d30;
+            border: 1px solid #3c3c3c;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 1000;
+            min-width: 180px;
+        }
+
+        .context-menu.show {
+            display: block;
+        }
+
+        .context-menu-item {
+            padding: 8px 15px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.2s;
+        }
+
+        .context-menu-item:hover {
+            background: #37373d;
+        }
+
+        .context-menu-separator {
+            height: 1px;
+            background: #3c3c3c;
+            margin: 5px 0;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #424242;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4e4e4e;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-content">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <h1>📁 File Manager</h1>
+                <span class="client-id" id="client-id">-</span>
+            </div>
+            <div class="status">
+                <div class="status-dot" id="status-dot"></div>
+                <span id="status-text">Connecting...</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Bar -->
+    <div class="nav-bar">
+        <div class="nav-buttons">
+            <button class="nav-btn" id="btn-back" disabled>←</button>
+            <button class="nav-btn" id="btn-forward" disabled>→</button>
+            <button class="nav-btn" id="btn-up" disabled>↑</button>
+            <button class="nav-btn" id="btn-refresh">⟳</button>
+        </div>
+        <div class="breadcrumbs" id="breadcrumbs">
+            <span class="breadcrumb active">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Sidebar with Drives and Bookmarks -->
+        <div class="sidebar">
+            <!-- Drives Section -->
+            <div class="sidebar-header">
+                <div class="sidebar-title">💿 Drives</div>
+            </div>
+            <div class="drives-list" id="drives-list">
+                <div class="empty-state" style="font-size: 12px; padding: 10px;">
+                    <p>Loading drives...</p>
+                </div>
+            </div>
+            
+            <!-- Bookmarks Section -->
+            <div class="sidebar-header" style="margin-top: 20px;">
+                <div class="sidebar-title">Bookmarks</div>
+                <button class="add-bookmark-btn" id="add-bookmark-btn" title="Add current path to bookmarks">+</button>
+            </div>
+            <div class="bookmarks-list" id="bookmarks-list">
+                <div class="empty-state">
+                    <div class="empty-icon">🔖</div>
+                    <p>No bookmarks yet</p>
+                    <p style="font-size: 12px; margin-top: 10px;">Click + to add current folder</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Explorer -->
+        <div class="file-explorer">
+            <div class="toolbar">
+                <button class="toolbar-btn" id="btn-goto-path">🔍 Go to Path...</button>
+                <button class="toolbar-btn" id="btn-new-folder">📁 New Folder</button>
+                <button class="toolbar-btn" id="btn-download" disabled>⬇️ Download</button>
+                <button class="toolbar-btn danger" id="btn-delete" disabled>🗑️ Delete</button>
+            </div>
+            <div class="file-list" id="file-list">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading files...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Panel -->
+        <div class="preview-panel hidden" id="preview-panel">
+            <div class="preview-header">
+                <div class="preview-title">Preview</div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="toolbar-btn" id="edit-file-btn" style="display: none;">✏️ Edit</button>
+                    <button class="toolbar-btn" id="save-file-btn" style="display: none;">💾 Save</button>
+                    <button class="close-preview" id="close-preview">×</button>
+                </div>
+            </div>
+            <div class="preview-content" id="preview-content">
+                <!-- Preview content will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Overlay -->
+    <div class="auth-overlay" id="auth-overlay">
+        <div class="auth-box">
+            <h2>🔐 Authentication Required</h2>
+            <div class="error-message" id="auth-error" style="display: none;"></div>
+            <input type="password" id="auth-token" placeholder="Enter access token">
+            <button class="full-width" onclick="authenticate()">Authenticate</button>
+        </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div class="context-menu" id="context-menu">
+        <div class="context-menu-item" onclick="contextAction('open')">📂 Open</div>
+        <div class="context-menu-item" onclick="contextAction('preview')">👁️ Preview</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" onclick="contextAction('copyPath')">📋 Copy Full Path</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" onclick="contextAction('download')">⬇️ Download</div>
+        <div class="context-menu-item" onclick="contextAction('rename')">✏️ Rename</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" onclick="contextAction('delete')">🗑️ Delete</div>
+    </div>
+
+    <script>
+        // Get client ID from URL
+        const pathParts = window.location.pathname.split('/');
+        const clientId = pathParts[pathParts.length - 1];
+        document.getElementById('client-id').textContent = clientId;
+
+        // State
+        let ws = null;
+        let authenticated = false;
+        let currentPath = '';
+        let currentFiles = [];
+        let selectedFile = null;
+        let history = [];
+        let historyIndex = -1;
+        let bookmarks = [];
+
+        // Load bookmarks from localStorage
+        function loadBookmarks() {
+            const saved = localStorage.getItem(`bookmarks_${clientId}`);
+            if (saved) {
+                try {
+                    bookmarks = JSON.parse(saved);
+                    renderBookmarks();
+                } catch (e) {
+                    console.error('Failed to load bookmarks:', e);
+                }
+            }
+        }
+
+        // Save bookmarks to localStorage
+        function saveBookmarks() {
+            localStorage.setItem(`bookmarks_${clientId}`, JSON.stringify(bookmarks));
+        }
+
+        // Render bookmarks list
+        function renderBookmarks() {
+            const list = document.getElementById('bookmarks-list');
+            
+            if (bookmarks.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔖</div>
+                        <p>No bookmarks yet</p>
+                        <p style="font-size: 12px; margin-top: 10px;">Click + to add current folder</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = bookmarks.map((bookmark, index) => `
+                <div class="bookmark-item ${bookmark.path === currentPath ? 'active' : ''}" 
+                     data-index="${index}">
+                    <span class="bookmark-icon">📁</span>
+                    <span class="bookmark-name" title="${escapeHtml(bookmark.path)}">${escapeHtml(bookmark.name)}</span>
+                    <button class="bookmark-delete" data-index="${index}">×</button>
+                </div>
+            `).join('');
+            
+            // Add event listeners
+            list.querySelectorAll('.bookmark-item').forEach((item, index) => {
+                item.addEventListener('click', (e) => {
+                    // Don't navigate if clicking delete button
+                    if (e.target.classList.contains('bookmark-delete')) return;
+                    navigateToBookmark(index);
+                });
+            });
+            
+            list.querySelectorAll('.bookmark-delete').forEach((btn) => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const index = parseInt(btn.getAttribute('data-index'));
+                    deleteBookmark(e, index);
+                });
+            });
+        }
+
+        // Add current path as bookmark
+        document.getElementById('add-bookmark-btn').addEventListener('click', () => {
+            if (!currentPath) return;
+            
+            // Check if already bookmarked
+            if (bookmarks.some(b => b.path === currentPath)) {
+                alert('This path is already bookmarked!');
+                return;
+            }
+
+            const name = prompt('Bookmark name:', currentPath.split(/[/\\]/).pop() || currentPath);
+            if (!name) return;
+
+            bookmarks.push({ name, path: currentPath });
+            saveBookmarks();
+            renderBookmarks();
+        });
+
+        // Navigate to bookmark
+        function navigateToBookmark(index) {
+            const bookmark = bookmarks[index];
+            if (bookmark) {
+                navigateTo(bookmark.path);
+            }
+        }
+
+        // Delete bookmark
+        function deleteBookmark(event, index) {
+            event.stopPropagation();
+            if (confirm('Delete this bookmark?')) {
+                bookmarks.splice(index, 1);
+                saveBookmarks();
+                renderBookmarks();
+            }
+        }
+
+        // WebSocket connection
+        function connect() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log('Connected to server');
+                document.getElementById('status-text').textContent = 'Connected';
+                document.getElementById('status-dot').classList.remove('disconnected');
+                
+                // Request drives list
+                requestDrives();
+                
+                // Wait a bit to see if auth is required
+                // If no auth:required message comes, assume auth is disabled and load files
+                setTimeout(() => {
+                    if (!authenticated && document.getElementById('auth-overlay').classList.contains('show') === false) {
+                        console.log('No auth required, loading files automatically');
+                        authenticated = true;
+                        requestDirectory('');
+                    }
+                }, 500);
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    handleMessage(message);
+                } catch (e) {
+                    console.error('Failed to parse message:', e);
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('Disconnected from server');
+                document.getElementById('status-text').textContent = 'Disconnected';
+                document.getElementById('status-dot').classList.add('disconnected');
+                
+                // Reconnect after 3 seconds
+                setTimeout(connect, 3000);
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+        }
+
+        // Handle incoming messages
+        function handleMessage(message) {
+            console.log('Received:', message);
+
+            switch (message.type) {
+
+                case 'welcome':
+                    authRequired = message.authRequired;
+                    if (authRequired) {
+                        document.getElementById('auth-overlay').classList.add('show');
+                        // Try stored token
+                        const storedToken = localStorage.getItem('auth-token');
+                        if (storedToken) {
+                            sendAuth(storedToken);
+                        }
+                    } else {
+                        authenticated = true;
+                    }
+                    break;
+
+                case 'auth':
+                    if (message.success) {
+                        authenticated = true;
+                        document.getElementById('auth-overlay').classList.remove('show');
+                        document.getElementById('auth-error').style.display = 'none';
+                        // Request initial directory listing
+                        requestDirectory('');
+                    } else {
+                        document.getElementById('auth-error').textContent = 
+                            message.error || 'Authentication failed';
+                        document.getElementById('auth-error').style.display = 'block';
+                    }
+                    break;
+
+                case 'files:list':
+                    handleFilesList(message);
+                    break;
+
+                case 'files:content':
+                    handleFileContent(message);
+                    break;
+
+                case 'files:drives':
+                    handleDrivesList(message);
+                    break;
+
+                case 'files:written':
+                    alert('File saved successfully');
+                    // Refresh preview with new content
+                    requestFileContent(currentEditingFile);
+                    break;
+
+                case 'files:error':
+                    alert(`Error: ${message.error}`);
+                    break;
+
+                case 'files:created':
+                case 'files:deleted':
+                case 'files:renamed':
+                    // Refresh current directory
+                    requestDirectory(currentPath);
+                    break;
+            }
+        }
+
+        // Send authentication
+        function sendAuth(token) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'auth',
+                    token: token
+                }));
+            }
+        }
+
+        // Send authentication
+        function authenticate() {
+            const token = document.getElementById('auth-token').value;
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'auth',
+                    token: token
+                }));
+            }
+        }
+
+        // Request directory listing
+        function requestDirectory(path) {
+            console.log(`Requesting directory: "${path}", authenticated: ${authenticated}, ws state: ${ws?.readyState}`);
+            
+            if (ws && ws.readyState === WebSocket.OPEN && authenticated) {
+                const message = {
+                    type: 'files:list',
+                    clientId: clientId,
+                    path: path
+                };
+                console.log('Sending files:list message:', message);
+                ws.send(JSON.stringify(message));
+            } else {
+                console.warn('Cannot request directory:', { 
+                    wsExists: !!ws, 
+                    wsState: ws?.readyState, 
+                    authenticated 
+                });
+            }
+        }
+
+        // Request file content
+        function requestFileContent(path) {
+            if (ws && ws.readyState === WebSocket.OPEN && authenticated) {
+                ws.send(JSON.stringify({
+                    type: 'files:read',
+                    clientId: clientId,
+                    path: path
+                }));
+            }
+        }
+
+        // Request drives list
+        function requestDrives() {
+            console.log('Requesting drives list');
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'files:drives',
+                    clientId: clientId
+                }));
+            }
+        }
+
+        // Handle drives list response
+        function handleDrivesList(message) {
+            console.log('Received drives list:', message);
+            
+            const drivesList = document.getElementById('drives-list');
+            const drives = message.drives || [];
+            
+            if (drives.length === 0) {
+                drivesList.innerHTML = '<div class="empty-state" style="font-size: 12px; padding: 10px;"><p>No drives found</p></div>';
+                return;
+            }
+
+            drivesList.innerHTML = drives.map(drive => {
+                const driveLetter = drive.replace(/[:\\\/]/g, '');
+                return `
+                    <div class="bookmark-item" onclick="navigateTo('${escapeHtml(drive)}')">
+                        <span class="bookmark-icon">💿</span>
+                        <span class="bookmark-path">${escapeHtml(driveLetter)}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Handle files list response
+        function handleFilesList(message) {
+            console.log('Received files list:', message);
+            
+            currentPath = message.path;
+            currentFiles = message.files || [];
+            
+            console.log(`Current path: "${currentPath}", Files count: ${currentFiles.length}`);
+            
+            // Update history
+            if (historyIndex === -1 || history[historyIndex] !== currentPath) {
+                history = history.slice(0, historyIndex + 1);
+                history.push(currentPath);
+                historyIndex = history.length - 1;
+            }
+
+            updateNavigation();
+            renderBreadcrumbs();
+            renderFiles();
+            renderBookmarks();
+        }
+
+        // Handle file content response
+        function handleFileContent(message) {
+            showPreview(message.path, message.content, message.encoding);
+        }
+
+        // Update navigation buttons
+        function updateNavigation() {
+            document.getElementById('btn-back').disabled = historyIndex <= 0;
+            document.getElementById('btn-forward').disabled = historyIndex >= history.length - 1;
+            document.getElementById('btn-up').disabled = !currentPath || currentPath === '/';
+        }
+
+        // Render breadcrumbs
+        function renderBreadcrumbs() {
+            const breadcrumbs = document.getElementById('breadcrumbs');
+            
+            // Detect path separator from current path
+            const separator = currentPath.includes('\\') ? '\\' : '/';
+            const parts = currentPath.split(/[/\\]/).filter(Boolean);
+            
+            let html = '<a href="#" class="breadcrumb" data-path="">🏠</a>';
+            
+            let accumulatedPath = '';
+            parts.forEach((part, index) => {
+                if (accumulatedPath) {
+                    accumulatedPath += separator + part;
+                } else {
+                    accumulatedPath = part;
+                    // If this is a drive letter (e.g., C:), add backslash
+                    if (part.match(/^[A-Za-z]:$/)) {
+                        accumulatedPath += '\\';
+                    }
+                }
+                
+                const isLast = index === parts.length - 1;
+                
+                html += '<span class="breadcrumb-separator">/</span>';
+                html += `<a href="#" class="breadcrumb ${isLast ? 'active' : ''}" 
+                           data-path="${escapeHtml(accumulatedPath)}">${escapeHtml(part)}</a>`;
+            });
+
+            breadcrumbs.innerHTML = html;
+            
+            // Add event listeners to breadcrumb links
+            breadcrumbs.querySelectorAll('.breadcrumb').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const path = link.getAttribute('data-path');
+                    navigateTo(path);
+                });
+            });
+        }
+
+        // Render files list
+        function renderFiles() {
+            const fileList = document.getElementById('file-list');
+            
+            if (currentFiles.length === 0) {
+                fileList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📂</div>
+                        <p>This folder is empty</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Sort: directories first, then files
+            const sorted = [...currentFiles].sort((a, b) => {
+                if (a.isDirectory !== b.isDirectory) {
+                    return a.isDirectory ? -1 : 1;
+                }
+                return a.name.localeCompare(b.name);
+            });
+
+            fileList.innerHTML = sorted.map((file, index) => {
+                const icon = getFileIcon(file);
+                const size = file.isDirectory ? '' : formatSize(file.size);
+                
+                return `
+                    <div class="file-item" 
+                         data-path="${escapeHtml(file.path)}"
+                         data-is-dir="${file.isDirectory}"
+                         data-index="${index}">
+                        <div class="file-icon">${icon}</div>
+                        <div class="file-info">
+                            <div class="file-name">${escapeHtml(file.name)}</div>
+                            ${size ? `<div class="file-size">${size}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            // Add event listeners to file items
+            document.querySelectorAll('.file-item').forEach((element, index) => {
+                const file = sorted[index];
+                
+                element.addEventListener('click', () => selectFile(element));
+                
+                element.addEventListener('dblclick', () => {
+                    openFile(file.path, file.isDirectory);
+                });
+                
+                element.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    showContextMenu(e, file.path, file.isDirectory);
+                });
+            });
+        }
+
+        // Get file icon based on type
+        function getFileIcon(file) {
+            if (file.isDirectory) return '📁';
+            
+            const ext = file.name.split('.').pop().toLowerCase();
+            const iconMap = {
+                // Images
+                'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️', 'bmp': '🖼️', 'svg': '🖼️', 'ico': '🖼️',
+                // Documents
+                'txt': '📄', 'md': '📝', 'doc': '📄', 'docx': '📄', 'pdf': '📕',
+                // Code
+                'js': '📜', 'ts': '📜', 'py': '🐍', 'java': '☕', 'cpp': '⚙️', 'c': '⚙️',
+                'html': '🌐', 'css': '🎨', 'json': '📋', 'xml': '📋', 'yaml': '📋',
+                // Archives
+                'zip': '📦', 'rar': '📦', '7z': '📦', 'tar': '📦', 'gz': '📦',
+                // Media
+                'mp3': '🎵', 'wav': '🎵', 'mp4': '🎬', 'avi': '🎬', 'mkv': '🎬',
+                // Executables
+                'exe': '⚙️', 'msi': '⚙️', 'bat': '⚙️', 'sh': '⚙️',
+            };
+            
+            return iconMap[ext] || '📄';
+        }
+
+        // Format file size
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        // Select file
+        function selectFile(element) {
+            document.querySelectorAll('.file-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            element.classList.add('selected');
+            
+            selectedFile = {
+                path: element.dataset.path,
+                isDirectory: element.dataset.isDir === 'true'
+            };
+
+            // Update toolbar buttons
+            document.getElementById('btn-download').disabled = selectedFile.isDirectory;
+            document.getElementById('btn-delete').disabled = false;
+        }
+
+        // Open file or directory
+        function openFile(path, isDirectory) {
+            console.log(`Opening: "${path}", isDirectory: ${isDirectory}`);
+            if (isDirectory) {
+                navigateTo(path);
+            } else {
+                previewFile(path);
+            }
+        }
+
+        // Navigate to path
+        function navigateTo(path) {
+            console.log(`Navigating to: "${path}"`);
+            requestDirectory(path);
+        }
+
+        // Preview file
+        function previewFile(path) {
+            const fileName = path.split(/[/\\]/).pop();
+            const hasExtension = fileName.includes('.');
+            const ext = hasExtension ? fileName.split('.').pop().toLowerCase() : '';
+            
+            const isImage = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'ico'].includes(ext);
+            const isText = ['txt', 'md', 'js', 'ts', 'py', 'java', 'cpp', 'c', 'h', 
+                           'html', 'css', 'json', 'xml', 'yaml', 'yml', 'log', 'sh', 'bat',
+                           'cfg', 'conf', 'ini', 'env', 'gitignore'].includes(ext);
+
+            if (isImage) {
+                showImagePreview(path);
+            } else if (isText || !hasExtension) {
+                // Open files without extension as text
+                requestFileContent(path);
+            } else {
+                alert('Preview not available for this file type');
+            }
+        }
+
+        // Show image preview
+        function showImagePreview(path) {
+            const panel = document.getElementById('preview-panel');
+            const content = document.getElementById('preview-content');
+            
+            // Request file info
+            const file = currentFiles.find(f => f.path === path);
+            const fileName = path.split(/[/\\]/).pop();
+
+            content.innerHTML = `
+                <img src="/api/files/download/${clientId}?path=${encodeURIComponent(path)}" 
+                     class="preview-image" 
+                     alt="${fileName}">
+                <div class="preview-info">
+                    <div class="preview-info-row">
+                        <span class="preview-info-label">File:</span>
+                        <span>${fileName}</span>
+                    </div>
+                    ${file ? `
+                    <div class="preview-info-row">
+                        <span class="preview-info-label">Size:</span>
+                        <span>${formatSize(file.size)}</span>
+                    </div>
+                    ` : ''}
+                    <div class="preview-info-row">
+                        <span class="preview-info-label">Path:</span>
+                        <span style="word-break: break-all;">${path}</span>
+                    </div>
+                </div>
+            `;
+
+            panel.classList.remove('hidden');
+        }
+
+        // Show text preview
+        function showPreview(path, content, encoding) {
+            const panel = document.getElementById('preview-panel');
+            const previewContent = document.getElementById('preview-content');
+            
+            currentEditingFile = path;
+            isEditMode = false;
+            
+            const fileName = path.split(/[/\\]/).pop();
+            const file = currentFiles.find(f => f.path === path);
+
+            // Limit preview to first 10KB for performance
+            const maxLength = 10000;
+            const truncated = content.length > maxLength;
+            const displayContent = truncated ? content.substring(0, maxLength) : content;
+
+            previewContent.innerHTML = `
+                <pre class="preview-text" id="preview-text-content">${escapeHtml(displayContent)}${truncated ? '\n\n... (truncated)' : ''}</pre>
+                <textarea class="preview-text" id="preview-edit-content" style="display: none; width: 100%; height: 100%; resize: none; font-family: monospace; font-size: 12px; background: #1e1e1e; color: #d4d4d4; border: none; padding: 15px;">${escapeHtml(displayContent)}</textarea>
+                <div class="preview-info">
+                    <div class="preview-info-row">
+                        <span class="preview-info-label">File:</span>
+                        <span>${fileName}</span>
+                    </div>
+                    ${file ? `
+                    <div class="preview-info-row">
+                        <span class="preview-info-label">Size:</span>
+                        <span>${formatSize(file.size)}</span>
+                    </div>
+                    ` : ''}
+                    <div class="preview-info-row">
+                        <span class="preview-info-label">Encoding:</span>
+                        <span>${encoding || 'UTF-8'}</span>
+                    </div>
+                    <div class="preview-info-row">
+                        <span class="preview-info-label">Path:</span>
+                        <span style="word-break: break-all;">${path}</span>
+                    </div>
+                </div>
+            `;
+
+            // Show edit button for text files
+            document.getElementById('edit-file-btn').style.display = 'block';
+            document.getElementById('save-file-btn').style.display = 'none';
+
+            panel.classList.remove('hidden');
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Close preview
+        document.getElementById('close-preview').addEventListener('click', () => {
+            document.getElementById('preview-panel').classList.add('hidden');
+            isEditMode = false;
+        });
+
+        // Edit file button
+        document.getElementById('edit-file-btn').addEventListener('click', () => {
+            if (!currentEditingFile) return;
+            
+            isEditMode = true;
+            const preText = document.getElementById('preview-text-content');
+            const editText = document.getElementById('preview-edit-content');
+            
+            if (preText && editText) {
+                preText.style.display = 'none';
+                editText.style.display = 'block';
+                editText.value = preText.textContent;
+                
+                // Update buttons
+                document.getElementById('edit-file-btn').style.display = 'none';
+                document.getElementById('save-file-btn').style.display = 'block';
+            }
+        });
+
+        // Save file button
+        document.getElementById('save-file-btn').addEventListener('click', () => {
+            if (!currentEditingFile || !isEditMode) return;
+            
+            const editText = document.getElementById('preview-edit-content');
+            if (!editText) return;
+            
+            const content = editText.value;
+            
+            if (ws && ws.readyState === WebSocket.OPEN && authenticated) {
+                ws.send(JSON.stringify({
+                    type: 'files:write',
+                    clientId: clientId,
+                    path: currentEditingFile,
+                    content: content
+                }));
+                
+                console.log(`Saving file: ${currentEditingFile}`);
+                
+                // Switch back to preview mode
+                isEditMode = false;
+                const preText = document.getElementById('preview-text-content');
+                if (preText) {
+                    preText.textContent = content;
+                    preText.style.display = 'block';
+                    editText.style.display = 'none';
+                }
+                
+                // Update buttons
+                document.getElementById('edit-file-btn').style.display = 'block';
+                document.getElementById('save-file-btn').style.display = 'none';
+            }
+        });
+
+        // Navigation buttons
+        document.getElementById('btn-back').addEventListener('click', () => {
+            if (historyIndex > 0) {
+                historyIndex--;
+                requestDirectory(history[historyIndex]);
+            }
+        });
+
+        document.getElementById('btn-forward').addEventListener('click', () => {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                requestDirectory(history[historyIndex]);
+            }
+        });
+
+        document.getElementById('btn-up').addEventListener('click', () => {
+            if (currentPath) {
+                const parentPath = currentPath.split(/[/\\]/).slice(0, -1).join('/');
+                navigateTo(parentPath);
+            }
+        });
+
+        document.getElementById('btn-refresh').addEventListener('click', () => {
+            requestDirectory(currentPath);
+        });
+
+        // Toolbar buttons
+        document.getElementById('btn-goto-path').addEventListener('click', () => {
+            const path = prompt('Enter path to navigate to:');
+            if (!path) return;
+            
+            console.log(`Navigating to: "${path}"`);
+            navigateTo(path);
+        });
+
+        document.getElementById('btn-new-folder').addEventListener('click', () => {
+            const name = prompt('Folder name:');
+            if (!name) return;
+
+            // Detect path separator from current path
+            const separator = currentPath.includes('\\') ? '\\' : '/';
+            const path = currentPath ? `${currentPath}${separator}${name}` : name;
+            
+            console.log(`Creating folder: "${path}"`);
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'files:mkdir',
+                    clientId: clientId,
+                    path: path
+                }));
+            }
+        });
+
+        document.getElementById('btn-download').addEventListener('click', () => {
+            if (!selectedFile || selectedFile.isDirectory) return;
+            
+            window.open(`/api/files/download/${clientId}?path=${encodeURIComponent(selectedFile.path)}`, '_blank');
+        });
+
+        document.getElementById('btn-delete').addEventListener('click', () => {
+            if (!selectedFile) return;
+            
+            const fileName = selectedFile.path.split(/[/\\]/).pop();
+            if (!confirm(`Delete "${fileName}"?`)) return;
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'files:delete',
+                    clientId: clientId,
+                    path: selectedFile.path
+                }));
+            }
+
+            selectedFile = null;
+        });
+
+        // Context menu
+        let contextMenuTarget = null;
+        let currentEditingFile = null;
+        let isEditMode = false;
+
+        function showContextMenu(event, path, isDirectory) {
+            event.preventDefault();
+            
+            console.log(`Context menu for: "${path}", isDirectory: ${isDirectory}`);
+            contextMenuTarget = { path, isDirectory };
+            
+            const menu = document.getElementById('context-menu');
+            menu.style.left = event.pageX + 'px';
+            menu.style.top = event.pageY + 'px';
+            menu.classList.add('show');
+        }
+
+        function contextAction(action) {
+            const menu = document.getElementById('context-menu');
+            menu.classList.remove('show');
+            
+            if (!contextMenuTarget) return;
+
+            switch (action) {
+                case 'open':
+                    openFile(contextMenuTarget.path, contextMenuTarget.isDirectory);
+                    break;
+                case 'preview':
+                    if (!contextMenuTarget.isDirectory) {
+                        previewFile(contextMenuTarget.path);
+                    }
+                    break;
+                case 'download':
+                    if (!contextMenuTarget.isDirectory) {
+                        window.open(`/api/files/download/${clientId}?path=${encodeURIComponent(contextMenuTarget.path)}`, '_blank');
+                    }
+                    break;
+                case 'rename':
+                    const oldName = contextMenuTarget.path.split(/[/\\]/).pop();
+                    const newName = prompt('New name:', oldName);
+                    if (newName && newName !== oldName) {
+                        // Detect path separator and reconstruct path
+                        const separator = contextMenuTarget.path.includes('\\') ? '\\' : '/';
+                        const parts = contextMenuTarget.path.split(/[/\\]/);
+                        parts[parts.length - 1] = newName;
+                        const newPath = parts.join(separator);
+                        
+                        console.log(`Renaming: "${contextMenuTarget.path}" -> "${newPath}"`);
+                        
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({
+                                type: 'files:rename',
+                                clientId: clientId,
+                                oldPath: contextMenuTarget.path,
+                                newPath: newPath
+                            }));
+                        }
+                    }
+                    break;
+                case 'delete':
+                    const fileName = contextMenuTarget.path.split(/[/\\]/).pop();
+                    if (confirm(`Delete "${fileName}"?`)) {
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({
+                                type: 'files:delete',
+                                clientId: clientId,
+                                path: contextMenuTarget.path
+                            }));
+                        }
+                    }
+                    break;
+                case 'copyPath':
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(contextMenuTarget.path).then(() => {
+                            console.log('Path copied to clipboard:', contextMenuTarget.path);
+                        }).catch(err => {
+                            console.error('Failed to copy path:', err);
+                            // Silent fail - clipboard API sometimes throws on success
+                        });
+                    } else {
+                        // Fallback for browsers without Clipboard API
+                        const textArea = document.createElement('textarea');
+                        textArea.value = contextMenuTarget.path;
+                        textArea.style.position = 'fixed';
+                        textArea.style.left = '-9999px';
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        try {
+                            document.execCommand('copy');
+                            console.log('Path copied to clipboard (fallback):', contextMenuTarget.path);
+                        } catch (err) {
+                            console.error('Failed to copy path (fallback):', err);
+                            // Silent fail
+                        }
+                        document.body.removeChild(textArea);
+                    }
+                    break;
+            }
+
+            contextMenuTarget = null;
+        }
+
+        // Close context menu on click outside
+        document.addEventListener('click', () => {
+            document.getElementById('context-menu').classList.remove('show');
+        });
+
+        // Auth on Enter key
+        document.getElementById('auth-token').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                authenticate();
+            }
+        });
+
+        // Initialize
+        loadBookmarks();
+        connect();
+    </script>
+</body>
+</html>
