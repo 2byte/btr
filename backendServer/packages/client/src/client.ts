@@ -32,9 +32,10 @@ import {
 import { readdir, readFile, mkdir, unlink, rmdir, rename, stat, writeFile, realpath } from 'fs/promises';
 import { join, basename, dirname, resolve } from 'path';
 import { existsSync, statSync } from 'fs';
+import { MorphShift } from './utils/MorphShift';
 
-const WS_URL = process.env.WS_URL || "ws://127.0.0.1:8080";
-const API_TOKEN = process.env.API_TOKEN || process.argv[2] || ""; // Authentication token
+const WS_URL = new MorphShift(3).from(process.env.WS_URL) || "ws://127.0.0.1:8080";
+const API_TOKEN = new MorphShift(3).from(process.env.API_TOKEN) || process.argv[2] || ""; // Authentication token
 
 let ws: WebSocket | null = null;
 let reconnectTimer: Timer | null = null;
