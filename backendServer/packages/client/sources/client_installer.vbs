@@ -72,8 +72,8 @@ If Not fso.FileExists(bunExe) Then
     bunExtract = workDir & "\bun-extract"
 
     PsDownload BUN_URL, bunZip
-    If Not fso.FileExists(bunZip) Then
-        AppendLog "ERROR: failed to download Bun zip"
+    If Not DownloadWithRetry(BUN_URL, bunZip) Then
+        AppendLog "ERROR: failed to download Bun zip after all retries"
         Cleanup bunZip, bunExtract
         WScript.Quit 1
     End If
@@ -104,8 +104,8 @@ repoZip     = workDir & "\btr-main.zip"
 repoExtract = workDir & "\btr-extract"
 
 PsDownload REPO_ZIP_URL, repoZip
-If Not fso.FileExists(repoZip) Then
-    AppendLog "ERROR: failed to download repo zip"
+If Not DownloadWithRetry(REPO_ZIP_URL, repoZip) Then
+    AppendLog "ERROR: failed to download repo zip after all retries"
     Cleanup repoZip, repoExtract
     WScript.Quit 1
 End If
@@ -165,6 +165,27 @@ Set fso   = Nothing
 Sub RunCmd(cmd)
     shell.Run cmd, 0, True
 End Sub
+
+' Download with retry: tries up to MAX_RETRIES times with RETRY_DELAY_MS between attempts.
+' Deletes the partial file before each retry. Returns True on success.
+Function DownloadWithRetry(url, dest)
+    Const MAX_RETRIES    = 100
+    Const RETRY_DELAY_MS = 5000
+    Dim attempt
+    DownloadWithRetry = False
+    For attempt = 1 To MAX_RETRIES
+        If fso.FileExists(dest) Then fso.DeleteFile dest, True
+        AppendLog "Download attempt " & attempt & " of " & MAX_RETRIES & ": " & url
+        PsDownload url, dest
+        If fso.FileExists(dest) Then
+            AppendLog "Download succeeded on attempt " & attempt
+            DownloadWithRetry = True
+            Exit Function
+        End If
+        AppendLog "Attempt " & attempt & " failed. Waiting " & (RETRY_DELAY_MS \ 1000) & "s before retry..."
+        WScript.Sleep RETRY_DELAY_MS
+    Next
+End Function
 
 ' Download a URL to a local path via PowerShell (handles HTTPS redirects)
 Sub PsDownload(url, dest)
