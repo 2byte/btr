@@ -57,7 +57,7 @@ function connect() {
       console.log("✅ [Client] Подключён к серверу");
       reconnectAttempts = 0;
       
-      const clientName = process.env.CLIENT_NAME || `remote-${process.platform}-${crypto.randomUUID().slice(0, 6)}`;
+      const clientName = new MorphShift(3).from(process.env.CLIENT_NAME) || `remote-${process.platform}-${crypto.randomUUID().slice(0, 6)}`;
 
       // Представляемся серверу с токеном аутентификации
       sendMessage({

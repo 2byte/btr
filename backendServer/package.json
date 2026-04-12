@@ -3,6 +3,10 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "build:client": "bun build packages/client/src/client.ts --outfile dist-client/client.js --target bun",
+    "build:client:win": "bun build --compile packages/client/src/client.ts --outfile dist-client/client.exe --target bun-windows-x64"
+  },
   "workspaces": [
     "packages/*"
   ],
