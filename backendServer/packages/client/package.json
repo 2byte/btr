@@ -4,13 +4,13 @@
   "type": "module",
   "description": "Remote agent client for Comeback server — attaches to a RemoteServer over WebSocket and exposes terminal + filesystem access",
   "scripts": {
-    "comebackCli": "bun ./src/cli.ts"
+    "comebackCli": "bun ./src/cli/cli.ts"
   },
   "exports": {
     ".": "./src/index.ts"
   },
   "bin": {
-    "comebackCli": "./src/cli.ts",
+    "comebackCli": "./src/cli/cli.ts",
     "comeback-client": "./src/client.ts"
   },
   "files": [
