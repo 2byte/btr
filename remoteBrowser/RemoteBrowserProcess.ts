@@ -280,3 +280,38 @@ export class RemoteBrowserProcess {
     }
   }
 }
+
+export type RemoteYandexBrowserOptions = RemoteChromeOptions;
+
+function defaultYandexBrowserExecutable(): string {
+  if (process.platform === "win32") {
+    const localAppData =
+      process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local");
+    return path.join(localAppData, "Yandex", "YandexBrowser", "Application", "browser.exe");
+  }
+  if (process.platform === "darwin") {
+    return path.join(
+      "/Applications",
+      "Yandex Browser.app",
+      "Contents",
+      "MacOS",
+      "Yandex Browser"
+    );
+  }
+  return "/usr/bin/yandex-browser";
+}
+
+/**
+ * RemoteYandexBrowserProcess — запуск Яндекс.Браузера с remote debugging (те же флаги, что у Chrome).
+ * По умолчанию: профиль во временной папке `HiddenYandexBrowser`, бинарник из типичного пути установки.
+ */
+export class RemoteYandexBrowserProcess extends RemoteBrowserProcess {
+  constructor(options: RemoteYandexBrowserOptions = {}) {
+    const defaultUserData = path.join(os.tmpdir(), "HiddenYandexBrowser");
+    super({
+      ...options,
+      chromePath: options.chromePath ?? defaultYandexBrowserExecutable(),
+      userDataDir: options.userDataDir ?? defaultUserData,
+    });
+  }
+}
