@@ -5,6 +5,7 @@
     "": {
       "name": "browser-tracker",
       "dependencies": {
+        "@2byte/zip-archive": "npm:@jsr/2byte__zip-archive",
         "@types/bun": "^1.3.8",
         "fs-extra": "^11.3.3",
         "graceful-fs": "^4.2.11",
@@ -18,6 +19,8 @@
     },
   },
   "packages": {
+    "@2byte/zip-archive": ["@jsr/2byte__zip-archive@0.1.0", "https://npm.jsr.io/~/11/@jsr/2byte__zip-archive/0.1.0.tgz", {}, "sha512-gFMj5bHSiypnBtJWqXBoKWFc48WFSmk9qRD000XcXmoHG6NINug3PsxAYSJWbuiqtuiMtuG9qc+BcsPis8mtoQ=="],
+
     "@babel/code-frame": ["@babel/code-frame@7.28.6", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.28.5", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-JYgintcMjRiCvS8mMECzaEn+m3PfoQiyqukOMCCVQtoJGYJw8j/8LBJEiqkHLkfwCcs74E3pbAUFNg7d9VNJ+Q=="],
 
     "@babel/helper-validator-identifier": ["@babel/helper-validator-identifier@7.28.5", "", {}, "sha512-qSs4ifwzKJSV39ucNjsvc6WVHs6b7S03sOh2OcHF9UHfVPqWWALUsNUVzhSBiItjRZoLHx7nIarVjqKVusUZ1Q=="],
